@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1240">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Perov AI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="pwa.js" defer></script>
+<script src="dynamic.js" defer></script>
+<script src="lattice.js" defer></script>
+<title>Welcome | Perov AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
+<body>
+<div class="hero">
+  <section class="hero-art">
+    <div>
+      <h1>Perov AI</h1>
+      <p>Perov AI predicts the oxygen-exchange coefficient (k*) of perovskite cathodes. Predict the surface exchange coefficient k* of cathode materials for solid oxide fuel cells, from a model trained on measured data.</p>
+    </div>
+    <svg class="cell" viewBox="30 20 250 240" role="img" aria-label="ABO3 perovskite unit cell">
+      <g class="oct"><path d="M155 67 L130 160 L85 137 Z M155 67 L130 160 L225 137 Z M155 207 L130 160 L85 137 Z M155 207 L130 160 L225 137 Z M155 67 L180 115 L85 137 Z M155 67 L180 115 L225 137 Z M155 207 L180 115 L85 137 Z M155 207 L180 115 L225 137 Z"/></g>
+      <path class="edge" d="M60 90H200V230H60Z M110 45H250V185H110Z M60 90L110 45 M200 90L250 45 M200 230L250 185 M60 230L110 185"/>
+      <g class="a"><circle cx="60" cy="90" r="9"/><circle cx="200" cy="90" r="9"/><circle cx="200" cy="230" r="9"/><circle cx="60" cy="230" r="9"/><circle cx="110" cy="45" r="9"/><circle cx="250" cy="45" r="9"/><circle cx="250" cy="185" r="9"/><circle cx="110" cy="185" r="9"/></g>
+      <circle class="b" cx="155" cy="137" r="10"/>
+      <g class="o"><circle cx="130" cy="160" r="6"/><circle cx="180" cy="115" r="6"/><circle cx="85" cy="137" r="6"/><circle cx="225" cy="137" r="6"/><circle cx="155" cy="67" r="6"/><circle cx="155" cy="207" r="6"/></g>
+    </svg>
+    <small>ABO&#8323; unit cell: A-site cations at the corners, the B-site cation at the centre, oxygen on the face centres.</small>
+  </section>
+  <section class="hero-form">
+    <h2>Welcome</h2>
+    <p class="sub">Choose how you want to use Perov AI. You will sign in on the next page.</p>
+    <div class="research-note" role="note"><strong>For researchers only</strong><span>This tool is for researchers. Predictions are model estimates and must be validated experimentally.</span></div>
+    <div class="resume" id="resume" hidden>
+      <p class="sub" style="margin:0 0 10px">You are signed in as <strong id="resume-email"></strong> (<span id="resume-role"></span>).</p>
+      <button class="btn primary" id="resume-go" type="button" style="width:100%">Continue</button>
+      <button class="btn ghost" id="resume-out" type="button" style="width:100%;margin-top:8px">Use a different account</button>
+    </div>
+    <button class="role-card" id="pick-user"><h3>Normal user</h3><p>Sign in or create an account, predict k* from a material and a temperature, and keep your searches.</p></button>
+    <button class="role-card dev" id="pick-dev"><h3>Developer</h3><p>Sign in to see every step behind a prediction, train models and manage checkpoints.</p></button>
+  </section>
+</div>
+<script>
+  const go = role => { location.href = "login.html?role=" + role; };
+  document.getElementById("pick-user").onclick = () => go("user");
+  document.getElementById("pick-dev").onclick = () => go("dev");
+
+  (async () => {
+    let t = null, role = null;
+    try { t = localStorage.getItem("kstar-token"); role = localStorage.getItem("kstar-role"); } catch {}
+    if (!t || !role) return;
+    const drop = () => { try { ["kstar-token", "kstar-role", "kstar-email"].forEach(k => localStorage.removeItem(k)); } catch {} };
+    try {
+      const r = await fetch((window.API_BASE || "") + "/api/auth/me", { headers: { Authorization: "Bearer " + t } });
+      if (!r.ok) { if (r.status === 401) drop(); return; }
+      const u = await r.json();
+      document.getElementById("resume-email").textContent = u.email;
+      document.getElementById("resume-role").textContent = u.role === "dev" ? "developer" : "normal user";
+      document.getElementById("resume").hidden = false;
+      document.getElementById("resume-go").onclick = () => { location.href = "predict.html"; };
+      document.getElementById("resume-out").onclick = () => { drop(); document.getElementById("resume").hidden = true; };
+    } catch {}
+  })();
+</script></body></html>
