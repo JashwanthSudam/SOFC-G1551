@@ -7,7 +7,7 @@ Web front end for the perovskite oxygen-exchange model from `ps_1.ipynb`.
     python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
     pip install -r requirements.txt
     python train.py path/to/dataset.xlsx     # trains SVR + Random Forest, writes models/
-    python app.py
+    python app.py 
 
 Open http://127.0.0.1:5000
 
