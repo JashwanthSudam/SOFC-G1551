@@ -739,6 +739,9 @@ def _train_job(data, name, seed):
 def admin_train():
     if not _admin():
         return jsonify(DENY[0]), 401
+    if os.environ.get("VERCEL"):
+        return jsonify(error="Training is not available on this Vercel deployment (no background jobs or writable storage). "
+                             "Run 'python train.py' locally, commit the updated models/ folder, and push."), 501
     if _job["status"] == "running":
         return jsonify(error="A training job is already running."), 409
     data_dir = BASE / "data"
