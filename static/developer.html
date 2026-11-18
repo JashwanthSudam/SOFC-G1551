@@ -81,13 +81,22 @@
     $("#tgo").disabled = false; $("#tgo").textContent = "Start training";
     if (s.status === "done") { toast("Training finished.", "ok"); loadCkpts(); } else if (s.status === "failed") toast(s.message, "error");
   }
-  $("#tform").addEventListener("submit", async e => {
+    $("#tform").addEventListener("submit", async e => {
     e.preventDefault();
+    const btn = $("#tgo"), reset = () => { btn.disabled = false; btn.textContent = "Start training"; };
     const fd = new FormData(); fd.append("seed", $("#seed").value); if ($("#dfile").files[0]) fd.append("file", $("#dfile").files[0]);
-    $("#tgo").disabled = true; $("#tgo").textContent = "Training\u2026";
-    const r = await api("/api/admin/train", { method: "POST", headers: H(), body: fd }), d = await r.json();
-    if (!r.ok) { toast(d.error, "error"); $("#tgo").disabled = false; $("#tgo").textContent = "Start training"; return; }
-    toast("Training started: " + d.started, "info"); watch();
+    btn.disabled = true; btn.textContent = "Training\u2026";
+    try {
+      const r = await api("/api/admin/train", { method: "POST", headers: H(), body: fd });
+      let d = {}; try { d = await r.json(); } catch (_) {}
+      if (!r.ok) {
+        const msg = d.error || ("Training could not start (server error " + r.status + "). Training is not supported on this deployment.");
+        const box = $("#tstat"); box.hidden = false; box.textContent = msg; toast(msg, "error"); reset(); return;
+      }
+      toast("Training started: " + d.started, "info"); watch();
+    } catch (err) {
+      toast("Could not reach the server.", "error"); reset();
+    }
   });
   $("#rfr").onclick = () => { loadCkpts(); loadStats(); };
   loadCkpts();
