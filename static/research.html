@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1240">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Perov AI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="pwa.js" defer></script>
+<script src="dynamic.js" defer></script>
+<script src="tabs.js" defer></script>
+<script src="lattice.js" defer></script>
+<title>Research | Perov AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="theme.js"></script><style>
+.rtoc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 6px}
+.rtoc a{padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);text-decoration:none;font-size:14px;font-weight:500}
+.rtoc a:hover{border-color:var(--glaze);color:var(--glaze)}
+.rbody{counter-reset:r;padding-bottom:48px}
+.rsec{margin-top:30px;scroll-margin-top:80px}
+.rsec>h2{font-size:clamp(22px,2.6vw,28px);display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.rsec>h2::before{counter-increment:r;content:counter(r);flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--glaze);color:var(--on-glaze,#fff);font:700 17px var(--display)}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+.rcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.rcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.rcard h3{font-size:17px;margin-bottom:8px}
+.rcard p,.rcard li{font-size:15px;line-height:1.55}
+.rcard ul{margin:0;padding-left:18px}.rcard li{margin:5px 0}
+.rcard .eq{display:block;margin-top:10px;padding:8px 12px;border-radius:8px;background:var(--glaze-soft);font:500 14px var(--mono);overflow-x:auto}
+.rfig{margin:18px 0 0;padding:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;text-align:center}
+.rfig figcaption{margin-top:8px;font-size:13px;color:var(--muted)}
+.rsteps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.rstep{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px 16px 58px}
+.rstep span{position:absolute;left:16px;top:16px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--glaze);color:var(--on-glaze,#fff);font:700 15px var(--display)}
+.rstep h4{margin:0 0 4px;font:700 16px var(--display)}
+.rstep p{font-size:14.5px;line-height:1.5}
+</style>
+</head>
+<body data-mode="user">
+<header class="top"><div class="wrap">
+  <a class="brand" href="predict.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a>
+  <nav class="nav" aria-label="Pages"><a href="predict.html">Predict</a><a href="history.html">History</a><a href="batch.html">Batch</a><a href="developer.html" class="dev-only">Developer</a><a href="research.html" aria-current="page">Research</a></nav>
+  <div class="role"><span id="who"></span><b id="rolename"></b> <a href="#" id="signout">Sign out</a></div>
+</div></header>
+<main><div class="wrap rbody">
+<div class="intro">
+  <h1>Research background</h1>
+  <p>The science behind Perov AI: how a solid oxide fuel cell works, why perovskite oxides matter, and what the oxygen surface-exchange coefficient k* tells us about a cathode.</p>
+</div>
+<nav class="rtoc" aria-label="On this page">
+  <a href="#sofc">Introduction to SOFC</a><a href="#perovskite">Perovskite materials</a><a href="#kstar">Oxygen surface exchange (k*)</a><a href="#future">Limitations and future scope</a>
+</nav>
+
+<section class="rsec" id="sofc">
+  <h2>Introduction to SOFC</h2>
+  <div class="rgrid">
+    <article class="rcard"><h3>What is a Solid Oxide Fuel Cell?</h3>
+      <p>A solid oxide fuel cell (SOFC) is an electrochemical device that turns the chemical energy of a fuel, such as hydrogen, natural gas or biogas, directly into electricity. It uses a solid ceramic electrolyte and typically runs at about 600 to 1000 &deg;C.</p></article>
+    <article class="rcard"><h3>Working principle</h3>
+      <ul>
+        <li>Air reaches the cathode, where oxygen picks up electrons and becomes oxide ions.</li>
+        <li>The oxide ions travel through the dense electrolyte to the anode.</li>
+        <li>At the anode the fuel reacts with the ions, releasing electrons and forming water.</li>
+        <li>The electrons flow through the external circuit, which is the electric current.</li>
+      </ul>
+      <code class="eq">H&#8322; + &frac12;O&#8322; &rarr; H&#8322;O</code></article>
+    <article class="rcard"><h3>Main components</h3>
+      <ul>
+        <li><b>Anode:</b> where the fuel is oxidised. Ni&ndash;YSZ is a common choice.</li>
+        <li><b>Cathode:</b> where oxygen is reduced to oxide ions. Perovskites such as LSM and LSCF are widely used.</li>
+        <li><b>Electrolyte:</b> a dense layer that conducts oxide ions but blocks electrons. YSZ and GDC are typical.</li>
+      </ul></article>
+    <article class="rcard"><h3>Role of oxygen ions</h3>
+      <p>Oxide ions (O<sup>2&minus;</sup>) carry the charge through the electrolyte and complete the circuit. How quickly oxygen is turned into ions at the cathode surface and moved inside it often limits the whole cell, which is why cathode materials receive so much attention.</p></article>
+    <article class="rcard"><h3>Applications</h3>
+      <ul><li>Stationary power generation</li><li>Combined heat and power for buildings and industry</li><li>Backup and remote power</li><li>Auxiliary power units</li></ul></article>
+    <article class="rcard"><h3>Advantages and challenges</h3>
+      <p><b>Advantages:</b> high electrical efficiency, even higher when waste heat is reused; fuel flexibility; low emissions; no precious-metal catalyst needed.</p>
+      <p style="margin-top:8px"><b>Challenges:</b> material degradation at high temperature, cost, slow start-up, sensitivity to thermal cycling, and poorer cathode performance when the temperature is lowered.</p></article>
+  </div>
+
+  <figure class="rfig">
+    <svg viewBox="0 0 520 200" role="img" aria-label="SOFC schematic: air-side cathode, electrolyte carrying oxide ions, fuel-side anode, and an external circuit carrying electrons" style="width:100%;height:auto;max-width:620px">
+      <defs><marker id="ra" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+      <g style="font:500 12px var(--body);fill:var(--ink)">
+        <rect x="100" y="50" width="90" height="110" rx="4" fill="var(--glaze-soft)" stroke="var(--line)"/>
+        <rect x="190" y="50" width="100" height="110" fill="var(--card)" stroke="var(--line)"/>
+        <rect x="290" y="50" width="90" height="110" rx="4" fill="var(--glaze-soft)" stroke="var(--line)"/>
+        <text x="145" y="108" text-anchor="middle" style="font-weight:600">Cathode</text>
+        <text x="240" y="130" text-anchor="middle" style="font-weight:600">Electrolyte</text>
+        <text x="335" y="108" text-anchor="middle" style="font-weight:600">Anode</text>
+        <text x="8" y="100">Air (O&#8322;)</text>
+        <text x="512" y="100" text-anchor="end">Fuel (H&#8322;)</text>
+        <text x="240" y="92" text-anchor="middle">O&sup2;&#8315; ions</text>
+        <text x="145" y="182" text-anchor="middle">O&#8322; + 4e&#8315; &rarr; 2O&sup2;&#8315;</text>
+        <text x="335" y="182" text-anchor="middle">H&#8322; + O&sup2;&#8315; &rarr; H&#8322;O + 2e&#8315;</text>
+        <text x="240" y="14" text-anchor="middle">e&#8315; through external circuit</text>
+      </g>
+      <g fill="none" stroke="var(--glaze)" stroke-width="1.8" stroke-linecap="round" style="color:var(--glaze)">
+        <line x1="64" y1="105" x2="98" y2="105" marker-end="url(#ra)"/>
+        <line x1="448" y1="105" x2="382" y2="105" marker-end="url(#ra)"/>
+        <line x1="205" y1="105" x2="275" y2="105" marker-end="url(#ra)"/>
+        <path d="M335 50 V28 H145 V48" marker-end="url(#ra)"/>
+      </g>
+    </svg>
+    <figcaption>Simplified SOFC: oxygen is reduced at the cathode, oxide ions cross the electrolyte, and the fuel is oxidised at the anode.</figcaption>
+  </figure>
+</section>
+
+<section class="rsec" id="perovskite">
+  <h2>Understanding perovskite materials</h2>
+  <div class="rgrid">
+    <article class="rcard"><h3>What are perovskite materials?</h3>
+      <p>Perovskites are a large family of crystalline compounds that share the same structural pattern, named after the mineral CaTiO<sub>3</sub>. Small changes in composition give very different electrical, magnetic and catalytic behaviour.</p></article>
+    <article class="rcard"><h3>ABX&#8323; crystal structure</h3>
+      <p>In the ideal cubic form, the B cation sits at the centre of an octahedron of X anions, and these octahedra share corners. The larger A cation fills the gap between them. Whether a composition forms a stable perovskite is often judged with the Goldschmidt tolerance factor:</p>
+      <code class="eq">t = (r<sub>A</sub> + r<sub>X</sub>) / (&radic;2 &middot; (r<sub>B</sub> + r<sub>X</sub>))</code>
+      <p style="margin-top:8px">Values near 1 point to the ideal cubic structure; the model uses <i>t</i> as one of its inputs.</p></article>
+    <article class="rcard"><h3>A-site, B-site and X-site elements</h3>
+      <ul>
+        <li><b>A-site:</b> large cations such as La, Sr, Ba, Ca, Sm, Gd and Pr.</li>
+        <li><b>B-site:</b> smaller transition-metal cations such as Co, Fe, Mn, Ni, Ti and Cr.</li>
+        <li><b>X-site:</b> oxygen in oxide perovskites, giving the ABO<sub>3</sub> form used in SOFC cathodes.</li>
+      </ul>
+      <p style="margin-top:8px">Mixing two elements on one site, as in La<sub>0.6</sub>Sr<sub>0.4</sub>Co<sub>0.2</sub>Fe<sub>0.8</sub>O<sub>3</sub>, is how properties are tuned.</p></article>
+    <article class="rcard"><h3>Properties of perovskite materials</h3>
+      <ul>
+        <li>Mixed ionic and electronic conduction</li>
+        <li>Oxygen vacancies that let oxide ions move</li>
+        <li>High catalytic activity for oxygen reduction</li>
+        <li>Tunable composition through A-site and B-site doping</li>
+        <li>Good structural flexibility and thermal stability</li>
+      </ul></article>
+    <article class="rcard"><h3>Importance in SOFC technology</h3>
+      <p>Perovskite oxides are among the leading SOFC cathode materials, including LSM, LSCF, LSC and BSCF. Because their composition can be tuned so widely, there are far more candidates than can be tested in a lab, which is the reason machine learning is used to screen them.</p></article>
+  </div>
+</section>
+
+<section class="rsec" id="kstar">
+  <h2>Oxygen surface exchange (k*)</h2>
+  <div class="rgrid" style="margin-bottom:16px">
+    <article class="rcard"><h3>Definition</h3>
+      <p>The oxygen surface-exchange coefficient, k*, measures how fast oxygen in the surrounding gas exchanges with oxygen in the lattice of a solid at its surface. A larger k* means faster exchange. This project predicts log k*, the base-10 logarithm, because k* spans many orders of magnitude.</p></article>
+    <article class="rcard"><h3>Importance of k* in SOFC performance</h3>
+      <p>A cathode with a high k* reduces oxygen quickly, which lowers its resistance and raises the power output. Together with the oxygen diffusion coefficient it decides how well a cathode performs, and at lower operating temperatures the surface step often becomes the bottleneck.</p></article>
+    <article class="rcard"><h3>Effect of temperature</h3>
+      <p>Surface exchange is thermally activated and follows an Arrhenius relationship, so k* rises steeply with temperature:</p>
+      <code class="eq">k* = k<sub>0</sub> &middot; exp(&minus;E<sub>a</sub> / k<sub>B</sub>T)</code>
+      <p style="margin-top:8px">A plot of log k* against 1000/T is close to a straight line, which is why 1000/T is an input to the model.</p></article>
+  </div>
+  <h3 style="margin:0 0 12px;font-size:18px">The three steps of oxygen exchange</h3>
+  <div class="rsteps">
+    <div class="rstep"><span>1</span><h4>Oxygen adsorption</h4><p>O<sub>2</sub> molecules from the gas attach to the cathode surface.</p></div>
+    <div class="rstep"><span>2</span><h4>Oxygen dissociation</h4><p>Adsorbed O<sub>2</sub> splits into oxygen atoms and takes up electrons from the material.</p></div>
+    <div class="rstep"><span>3</span><h4>Oxygen incorporation</h4><p>The oxygen species fill vacancies in the lattice and become O<sup>2&minus;</sup> ions inside the crystal.</p></div>
+  </div>
+</section>
+
+<section class="rsec" id="future">
+  <h2>Limitations and future scope</h2>
+  <div class="rcols">
+    <article class="rcard"><h3>Limitations</h3>
+      <ul>
+        <li><b>Limited dataset size:</b> the model is trained on 311 measurements covering 80 materials.</li>
+        <li><b>Availability of experimental measurements:</b> k* values are costly to measure, so data is scarce for many compositions.</li>
+        <li><b>Prediction uncertainty:</b> test scores are moderate, and predictions for materials unlike the training set are less reliable.</li>
+        <li><b>Need for experimental validation:</b> a prediction is a guide for choosing what to test, not a replacement for measuring it.</li>
+      </ul></article>
+    <article class="rcard"><h3>Future scope</h3>
+      <ul>
+        <li><b>Include more perovskite materials</b> across additional A-site and B-site elements.</li>
+        <li><b>Expand the dataset</b> with new and repeated measurements.</li>
+        <li><b>Explore additional descriptors</b> that capture more of the surface chemistry.</li>
+        <li><b>Improve prediction accuracy</b> with better features and tuning.</li>
+        <li><b>Investigate more machine learning algorithms</b> beyond SVR and Random Forest.</li>
+        <li><b>Integrate experimental validation</b> by testing the top predicted materials in the lab.</li>
+      </ul></article>
+  </div>
+</section>
+</div></main>
+
+<script src="config.js"></script><script src="ui.js"></script>
+<script>
+(() => {
+  const ROLE = (() => { try { return localStorage.getItem("kstar-role"); } catch { return null; } })();
+  if (!(() => { try { return localStorage.getItem("kstar-token"); } catch { return null; } })()) { location.replace("index.html"); return; }
+  if (ROLE !== "dev" && ROLE !== "user") { location.replace("index.html"); return; }
+  document.body.dataset.mode = ROLE;
+  document.getElementById("rolename").textContent = ROLE === "dev" ? "Developer" : "Normal user";
+
+})();
+</script></body></html>
