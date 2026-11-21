@@ -1,0 +1,50 @@
+{
+  "dataset": "asr",
+  "target": "Log ASR (Ohm-cm2) at T=973 K",
+  "rows": 289,
+  "materials": 252,
+  "features": [
+    "avg_Ion",
+    "avg_EN",
+    "avg_R",
+    "avg_Sa",
+    "avg_SmithAcid",
+    "avg_Ionic"
+  ],
+  "split_rows": {
+    "train": 204,
+    "val": 43,
+    "test": 42
+  },
+  "split_check": "no material appears in more than one split",
+  "models": {
+    "full_svr": {
+      "val": {
+        "r2": 0.114,
+        "mae": 0.526
+      },
+      "test": {
+        "r2": 0.614,
+        "mae": 0.489
+      },
+      "grouped_cv": {
+        "r2": 0.485,
+        "mae": 0.506
+      }
+    },
+    "full_rf": {
+      "val": {
+        "r2": 0.076,
+        "mae": 0.52
+      },
+      "test": {
+        "r2": 0.644,
+        "mae": 0.502
+      },
+      "grouped_cv": {
+        "r2": 0.438,
+        "mae": 0.527
+      }
+    }
+  }
+}

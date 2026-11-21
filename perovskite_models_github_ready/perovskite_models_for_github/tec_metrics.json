@@ -1,0 +1,50 @@
+{
+  "dataset": "tec",
+  "target": "TEC (x10^-6 K^-1)",
+  "rows": 137,
+  "materials": 130,
+  "features": [
+    "avg_Ion",
+    "avg_EN",
+    "avg_R",
+    "avg_Sa",
+    "avg_SmithAcid",
+    "avg_Ionic"
+  ],
+  "split_rows": {
+    "train": 95,
+    "val": 21,
+    "test": 21
+  },
+  "split_check": "no material appears in more than one split",
+  "models": {
+    "full_svr": {
+      "val": {
+        "r2": 0.753,
+        "mae": 1.594
+      },
+      "test": {
+        "r2": 0.795,
+        "mae": 1.019
+      },
+      "grouped_cv": {
+        "r2": 0.677,
+        "mae": 1.51
+      }
+    },
+    "full_rf": {
+      "val": {
+        "r2": 0.864,
+        "mae": 1.187
+      },
+      "test": {
+        "r2": 0.706,
+        "mae": 1.327
+      },
+      "grouped_cv": {
+        "r2": 0.646,
+        "mae": 1.701
+      }
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "created": "2026-11-21",
+  "dataset": "foundry-ml/dataset_perovskite_conductivity",
+  "target": "log10(Conductivity S/cm)",
+  "rows": 7230,
+  "materials": 415,
+  "features": [
+    "avg_Ion",
+    "avg_EN",
+    "avg_R",
+    "avg_Sa",
+    "avg_SmithAcid",
+    "avg_Ionic",
+    "1000/T",
+    "PO2",
+    "PH2O",
+    "carrier_enc"
+  ],
+  "split_rows": {
+    "train": 4398,
+    "val": 1592,
+    "test": 1240
+  },
+  "split_check": "no material appears in more than one split",
+  "models": {
+    "full_svr": {
+      "val": {
+        "r2": 0.643,
+        "mae": 0.775
+      },
+      "test": {
+        "r2": 0.658,
+        "mae": 0.849
+      },
+      "grouped_cv": {
+        "r2": 0.721,
+        "mae": 0.739
+      }
+    },
+    "full_rf": {
+      "val": {
+        "r2": 0.842,
+        "mae": 0.513
+      },
+      "test": {
+        "r2": 0.824,
+        "mae": 0.629
+      },
+      "grouped_cv": {
+        "r2": 0.799,
+        "mae": 0.608
+      }
+    }
+  }
+}
