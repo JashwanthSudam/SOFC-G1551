@@ -81,3 +81,35 @@ def predict_all(name=None, descriptors=None, model="svr"):
         try: out[t] = predict(t, name, descriptors, model)
         except Exception as e: out[t] = {"value": None, "error": str(e)}
     return out
+
+
+# ---------------------------------------------------------------- used by app.py for the Result page
+def _site_averages(values):
+    """avg_* inputs from per-site descriptors (assumes equal A- and B-site amounts)."""
+    out = {}
+    for k in ("Ion", "EN", "R", "Sa", "SmithAcid", "Ionic"):
+        try:
+            out[f"avg_{k}"] = (float(values[f"{k}_A"]) + float(values[f"{k}_B"])) / 2
+        except (KeyError, TypeError, ValueError):
+            pass
+    return out
+
+def other_properties(name=None, descriptors=None, model="svr"):
+    """Conductivity, ASR and TEC for the Result page. Never raises; returns None if nothing can be done.
+    name: formula string (name mode)  |  descriptors: dict of the 23 inputs (descriptor mode).
+    A '1000/T' value in descriptors sets the temperature used for conductivity."""
+    try:
+        model = "rf" if model == "rf" else "svr"
+        d = dict(descriptors or {})
+        if not (name and str(name).strip()):
+            d = {**_site_averages(d), **({"1000/T": d["1000/T"]} if "1000/T" in d else {})}
+        out = {}
+        for t in ("conductivity", "asr", "tec"):
+            try:
+                out[t] = predict(t, name, d, model)
+            except Exception as exc:
+                out[t] = {"value": None, "error": str(exc)}
+        return out
+    except Exception as exc:
+        print("other_properties skipped:", exc)
+        return None
