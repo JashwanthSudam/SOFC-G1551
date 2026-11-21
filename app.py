@@ -30,7 +30,12 @@ import train as trainer
 from flask import Flask, jsonify, request
 
 BASE = Path(__file__).parent
-
+try:
+    from predict_both import other_properties
+except Exception as exc:
+    print("Extra properties unavailable:", exc)
+    def other_properties(*args, **kwargs):
+        return None
 # Reference values for the result summary. Change them here or with environment variables.
 LSC_LOG_KSTAR = float(os.environ.get("LSC_LOG_KSTAR", "-6.40"))      # log10 k* of the LSC benchmark
 EHULL_STABLE_MAX = float(os.environ.get("EHULL_STABLE_MAX", "57"))   # E_above_hull limit for "stable"
@@ -487,6 +492,7 @@ def predict():
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
     out = respond(df, which, _state["svr"], _state["rf"])
+          out["properties"] = other_properties(descriptors=body.get("values"), model=which)
     inv = float(df.iloc[0]["1000/T"]) if "1000/T" in df.columns else None
     out["saved"] = _save(user, "descriptors", "Custom descriptors", (1000 / inv - 273.15) if inv else None,
                          which, out["log_kstar"], out["kstar"], body.get("values"))
@@ -521,6 +527,7 @@ def predict_composition():
         return jsonify(error=str(exc)), 400
     out = respond(df, which, _state["csvr"], _state["crf"], warns)
     out.update(descriptors=feats, units={k: unit_of(k) for k in feats}, sites=sites, formula=str(body.get("formula", "")).strip())
+              out["properties"] = other_properties(name=out["formula"], descriptors={"1000/T": 1000 / (temp + 273.15)}, model=which)
     out["saved"] = _save(user, "name", out["formula"], temp, which, out["log_kstar"], out["kstar"])
     return jsonify(out)
 
