@@ -492,7 +492,7 @@ def predict():
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
     out = respond(df, which, _state["svr"], _state["rf"])
-          out["properties"] = other_properties(descriptors=body.get("values"), model=which)
+    out["properties"] = other_properties(descriptors=body.get("values"), model=which)
     inv = float(df.iloc[0]["1000/T"]) if "1000/T" in df.columns else None
     out["saved"] = _save(user, "descriptors", "Custom descriptors", (1000 / inv - 273.15) if inv else None,
                          which, out["log_kstar"], out["kstar"], body.get("values"))
@@ -527,7 +527,7 @@ def predict_composition():
         return jsonify(error=str(exc)), 400
     out = respond(df, which, _state["csvr"], _state["crf"], warns)
     out.update(descriptors=feats, units={k: unit_of(k) for k in feats}, sites=sites, formula=str(body.get("formula", "")).strip())
-              out["properties"] = other_properties(name=out["formula"], descriptors={"1000/T": 1000 / (temp + 273.15)}, model=which)
+    out["properties"] = other_properties(name=out["formula"], descriptors={"1000/T": 1000 / (temp + 273.15)}, model=which)
     out["saved"] = _save(user, "name", out["formula"], temp, which, out["log_kstar"], out["kstar"])
     return jsonify(out)
 
