@@ -26,38 +26,31 @@
 <main><div class="wrap dwrap">
 <div class="intro">
   <h1>Predict oxygen exchange for a perovskite cathode</h1>
-  <p class="explorer-only">Type a material formula and pick a temperature, or enter every descriptor yourself. By name, the full analysis appears below; by descriptors, it opens on the next page.</p>
+  <p class="explorer-only">Type a material formula and a temperature, or enter every descriptor yourself. The result opens on the next page.</p>
   <p class="dev-only">Inputs are sent as JSON to the Flask endpoint, reordered to the training column order, scaled and passed to the model. Each stage is shown on the result page.</p>
-</div>
-<div class="dtabs" role="tablist" aria-label="Prediction tools">
-  <button type="button" role="tab" data-tab="predict" aria-selected="true">Predict</button>
-  <button type="button" role="tab" data-tab="lowt" aria-selected="false">Low-T finder</button>
-  <button type="button" role="tab" data-tab="cand" aria-selected="false">Candidates</button>
-  <a href="history.html">History</a>
 </div>
 <div id="pane-predict">
 <div class="seg" role="group" aria-label="Input type" style="margin-bottom:18px">
   <button type="button" id="by-desc" aria-pressed="false">By descriptors</button>
   <button type="button" id="by-name" aria-pressed="true">By material name</button>
 </div>
-<div class="pgrid" id="namepanel">
-<section class="panel">
-  <h2>Predict k*</h2>
-  <p class="sub">Enter any ABO<sub>3</sub> formula. Dataset compositions and new ones both work; every result is saved to your history.</p>
+<div id="namepanel">
+<section class="panel" aria-labelledby="h-name" style="max-width:none">
+  <h2 id="h-name">Material and temperature</h2>
+  <p class="sub">Type the formula and temperature. The properties are worked out from the composition, so you don&rsquo;t enter any descriptors.</p>
   <div id="loadmsg2" class="msg" hidden></div>
   <form id="nameform" novalidate>
-    <div class="field" style="margin-top:14px"><label for="formula">Material formula</label><input id="formula" type="text" list="flist" value="La0.6Sr0.4Co0.2Fe0.8O3" placeholder="e.g. La0.6Sr0.4CoO3 or Ca0.5Sr0.5FeO3" autocomplete="off" spellcheck="false"><datalist id="flist"></datalist><small>A-site elements first, then B-site, ending in O3</small></div>
-    <div class="field tempbox" style="margin-top:14px"><label for="tempname">Operating temperature: <b id="tempout">400 &deg;C</b></label>
-      <input id="tempname" type="range" min="300" max="900" step="25" value="400">
-      <div class="presets" id="tpresets"><span>Low-temp presets:</span><button type="button" data-t="400">400</button><button type="button" data-t="500">500</button><button type="button" data-t="600">600</button><button type="button" data-t="700">700</button><button type="button" data-t="800">800</button></div></div>
+    <div class="fields" style="margin-top:14px">
+      <div class="field"><label for="formula">Material formula</label><input id="formula" type="text" list="flist" value="La0.6Sr0.4Co0.2Fe0.8O3" placeholder="e.g. La0.6Sr0.4CoO3" autocomplete="off" spellcheck="false"><datalist id="flist"></datalist><small>A-site elements first, then B-site, ending in O3</small></div>
+      <div class="field"><label for="tempname">Temperature (&deg;C)</label><input id="tempname" type="number" min="300" max="1000" step="1" value="800" inputmode="decimal"><b id="tempout" hidden></b></div>
+    </div>
     <div class="field" style="margin-top:14px"><label for="exname">Examples</label><select id="exname"></select><small id="exhint"></small></div>
     <div class="modelpick dev-only"><label for="model2">Model</label><select id="model2"><option value="svr">SVR pipeline (scaler + SVR)</option></select></div>
-    <div class="actions"><button class="btn primary" type="submit" id="go2">Predict</button></div>
+    <div class="actions"><button class="btn primary" type="submit" id="go2">Predict k* and other properties</button></div>
     <div id="err2" class="msg" role="alert" hidden></div>
   </form>
   <p class="sub" id="elhint" style="margin-top:16px"></p>
 </section>
-<aside class="latticebox" aria-label="Perovskite unit cell"><canvas id="cell3d" aria-hidden="true"></canvas><div class="legend" id="cellnote"><i style="background:#5bd6ec"></i>A-site<i style="background:#d64cd6"></i>B-site<i style="background:#d4a046"></i>O</div></aside>
 </div>
 <section class="panel" id="descpanel" aria-labelledby="h-in" style="max-width:860px" hidden>
   <h2 id="h-in">Material and conditions</h2>
@@ -69,7 +62,7 @@
     <div class="modelpick dev-only" id="modelpick"><label for="model">Model</label>
       <select id="model"><option value="svr">SVR pipeline (scaler + SVR)</option></select></div>
     <div class="actions">
-      <button class="btn primary" type="submit" id="go">Predict k*</button>
+      <button class="btn primary" type="submit" id="go">Predict k* and other properties</button>
       <button class="btn ghost" type="button" id="reset">Reset to example</button>
     </div>
     <div id="err" class="msg" role="alert" hidden></div>
@@ -106,6 +99,7 @@
     set(k,v){ try { localStorage.setItem(k,v); } catch {} }
   };
 
+  try { sessionStorage.setItem("kstar-tab", "predict"); } catch {}
   let schema = null;
   function syncT(){
     const v = $("#tempname").value; $("#tempout").innerHTML = v + " &deg;C";
@@ -256,7 +250,7 @@
     } catch (ex) {
       if (window.kstarAbortResult) kstarAbortResult(rw); err.textContent = ex.message; err.hidden = false; toast(ex.message, "error");
     } finally {
-      btn.disabled = false; btn.textContent = "Predict k*";
+      btn.disabled = false; btn.textContent = "Predict k* and other properties";
     }
   });
 
@@ -310,7 +304,7 @@
       if (window.kstarAbortResult) kstarAbortResult(rw);
       err.textContent = ex.message; err.hidden = false; toast(ex.message, "error");
     } finally {
-      btn.disabled = false; btn.textContent = "Predict";
+      btn.disabled = false; btn.textContent = "Predict k* and other properties";
     }
   });
 
