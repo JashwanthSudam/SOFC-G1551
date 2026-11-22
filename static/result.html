@@ -124,7 +124,7 @@ let schema = null;
         </div>
       </div>
       ${verdicts(d.assessment)}
-      ${d.analysis && d.analysis.at ? allValues(d.analysis) : (d.properties ? propsSection(d.properties) : "")}
+      ${d.analysis && d.analysis.at ? allValues(d.analysis) : propCards(d)}
       ${d.explain ? shapSection(d.explain) : ""}
       ${d.sweep ? `<div class="chart"><h3>How it changes with temperature</h3>${chart(d, payload)}<p class="note">Same material, temperature varied from ${d.sweep[0].temp_c} to ${d.sweep.at(-1).temp_c} &deg;C.</p></div>` : ""}
       ${(d.warnings && d.warnings.length) ? `<div class="msg" role="alert"><strong>Outside the training data:</strong><br>${d.warnings.map(esc).join("<br>")}<br>Treat this prediction as unreliable.</div>` : ""}
@@ -133,26 +133,49 @@ let schema = null;
 
   function vsLine(v){
     if (!v || v.factor == null) return "";
-    return `<span class="vs ${v.good ? "good" : "bad"}">${v.up ? "\u2191" : "\u2193"} ${sci(v.factor)}\u00d7 ${v.up ? "higher" : "lower"} than LSC</span>`;
+    return `<div class="vs ${v.good ? "good" : "bad"}">${v.up ? "\u2191" : "\u2193"} ${sciT(v.factor)}\u00d7 ${v.up ? "higher" : "lower"} than LSC</div>`;
+  }
+  const SUPC = { "-": "\u207B", "0": "\u2070", "1": "\u00B9", "2": "\u00B2", "3": "\u00B3", "4": "\u2074", "5": "\u2075", "6": "\u2076", "7": "\u2077", "8": "\u2078", "9": "\u2079" };
+  function sciT(v){
+    if (v == null || !isFinite(v)) return "n/a";
+    const a = Math.abs(v);
+    if (a >= 0.01 && a < 1000) return String(+v.toPrecision(3));
+    const [m, e] = v.toExponential(2).split("e");
+    return `${(+m).toString()}\u00D710${String(+e).split("").map(ch => SUPC[ch] || ch).join("")}`;
   }
 
   function allValues(a){
     const at = a.at || {}, ref = a.lsc_at, vs = a.vs || {};
-    const T = Math.round(a.temp_c);
-    const num = (x, f) => (x == null || !isFinite(x)) ? null : f(x);
-    const rows = [
-      ["log k*", num(at.logk, x => `${minus(x, 3)} <small>log cm s<sup>-1</sup></small>`),
-        ref ? `LSC reference: ${minus(ref.logk, 3)}` : "", vs.logk != null ? `<span class="vs ${vs.logk >= 0 ? "good" : "bad"}">${vs.logk >= 0 ? "\u2191" : "\u2193"} ${Math.abs(vs.logk).toFixed(2)} log units ${vs.logk >= 0 ? "above" : "below"} LSC</span>` : ""],
-      ["Ionic conductivity (\u03c3<sub>ion</sub>)", num(at.sigma_i, x => `${sci(x)} <small>S cm<sup>-1</sup></small>`), "Physics estimate (Nernst\u2013Einstein)", vsLine(vs.sigma_i)],
-      ["Electronic conductivity (\u03c3<sub>e</sub>, in air)", num(at.sigma_e, x => `${sci(x)} <small>S cm<sup>-1</sup></small>`), "Predicted by the conductivity model", vsLine(vs.sigma_e)],
-      ["Thermal expansion (TEC)", num(at.tec, x => `${x.toFixed(2)} <small>\u00d7 10<sup>-6</sup> K<sup>-1</sup></small>`), "Predicted by the TEC model", ""],
-      ["Polarization resistance (Rp)", num(at.rp, x => `${sci(x)} <small>\u03a9 cm<sup>2</sup></small>`), "Physics estimate (Adler\u2013Lane\u2013Steele)", vsLine(vs.rp)],
-      ["Area-specific resistance (ASR)", num(at.asr, x => `${sci(x)} <small>\u03a9 cm<sup>2</sup></small>`), "Rp plus ohmic loss of a 10 \u00b5m film", vsLine(vs.asr)]
+    const list = [
+      { n: "log k*", v: minus(at.logk), u: `cm/s at ${Math.round(a.temp_c)} \u00B0C`, t: "ml", sub: ref ? `<div class="vs ref">LSC ${minus(ref.logk)}</div>` : "" },
+      { n: "Ionic conductivity", v: sciT(at.sigma_i), u: "S/cm", t: "ph", sub: vsLine(vs.sigma_i) },
+      { n: "Conductivity (air)", v: sciT(at.sigma_e), u: "S/cm", t: "ml", sub: vsLine(vs.sigma_e) },
+      { n: "Thermal expansion", v: at.tec == null ? "n/a" : at.tec.toFixed(2), u: "\u00D710\u207B\u2076 /K", t: "ml", sub: "" },
+      { n: "Polarization resistance", v: sciT(at.rp), u: "\u03A9\u00B7cm\u00B2", t: "ph", sub: vsLine(vs.rp) },
+      { n: "ASR", v: sciT(at.asr), u: "\u03A9\u00B7cm\u00B2", t: "ph", sub: vsLine(vs.asr) },
+      { n: "E above hull", v: a.ehull == null ? "n/a" : a.ehull.toFixed(1), u: `meV/atom \u00B7 ${a.stability_band || ""}`, t: "ml", sub: `<div class="vs ref">${esc(a.ehull_source || "")}</div>` }
     ];
-    const html = rows.map(([lab, val, note, cmp]) => val == null
-      ? metric(lab, "Not available", "na", "This property could not be predicted for this material.")
-      : metric(lab, val, "info", note, [esc(note), cmp].filter(Boolean).join(" &middot; "))).join("");
-    return `<h3 class="vals-h">All predicted values at ${T} \u00b0C</h3><div class="verdicts">${html}</div>`;
+    const cards = list.map(c => `<div class="pcard"><div class="nm">${c.n}</div><div class="val">${c.v}</div><div class="un">${c.u}</div><span class="tag ${c.t}">${c.t === "ml" ? "ML" : "Physics estimate"}</span>${c.sub}</div>`).join("");
+    return `<h3 class="vals-h">Predicted properties at the selected temperature</h3>
+      <p class="vals-sub"><span class="tag ml">ML</span> trained on measured data &nbsp; <span class="tag ph">Physics estimate</span> derived from log k* with documented formulas (relative ranking, not measured values).</p>
+      <div class="cardgrid">${cards}</div>
+      <p class="dnote">Ionic conductivity: Nernst\u2013Einstein with D* = k*\u00B7L<sub>c</sub>. Polarization resistance: R<sub>p</sub> = RT/(4F\u00B2c<sub>O</sub>k*). ASR = R<sub>p</sub> plus the ohmic loss of a 10 \u00B5m layer. LSC is ${esc(a.lsc_formula || "LSC")} from the same model at the same temperature.</p>`;
+  }
+
+  function propCards(d){
+    const p = d.properties || {}, T = (payload => payload && payload.temp_c != null ? Math.round(payload.temp_c) : null)(stored.payload);
+    const g = k => (p[k] && p[k].value != null && isFinite(p[k].value)) ? p[k].value : null;
+    const cond = g("conductivity"), asr = g("asr"), tec = g("tec");
+    const list = [
+      { n: "log k*", v: minus(d.log_kstar), u: "cm/s", t: "ml", sub: "" },
+      { n: "Conductivity (air)", v: cond == null ? "n/a" : sciT(Math.pow(10, cond)), u: "S/cm", t: "ml", sub: "" },
+      { n: "Thermal expansion", v: tec == null ? "n/a" : tec.toFixed(2), u: "\u00D710\u207B\u2076 /K", t: "ml", sub: "" },
+      { n: "ASR", v: asr == null ? "n/a" : sciT(Math.pow(10, asr)), u: "\u03A9\u00B7cm\u00B2", t: "ml", sub: "" }
+    ];
+    const cards = list.map(c => `<div class="pcard"><div class="nm">${c.n}</div><div class="val">${c.v}</div><div class="un">${c.u}</div><span class="tag ${c.t}">ML</span>${c.sub}</div>`).join("");
+    return `<h3 class="vals-h">Predicted properties${T != null ? " at " + T + " \u00B0C" : ""}</h3>
+      <p class="vals-sub"><span class="tag ml">ML</span> trained on measured data.</p>
+      <div class="cardgrid">${cards}</div>`;
   }
 
   function propsSection(p){
