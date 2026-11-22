@@ -14,7 +14,7 @@
 <script src="lattice.js" defer></script>
 <title>Batch | Perov AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
+<link rel="stylesheet" href="style.css"><style>.stack>*{min-width:0}#bres{min-width:0;max-width:100%}#bres .hb{grid-template-columns:minmax(110px,170px) 1fr 74px}#bres .hb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#bres .hb b{font-family:var(--mono);font-size:12px}table.t th small{font-weight:400;color:var(--muted)}</style><script src="theme.js"></script></head>
 <body data-mode="user">
 <header class="top"><div class="wrap">
   <a class="brand" href="predict.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a>
@@ -22,7 +22,7 @@
   <div class="role"><span id="who"></span><b id="rolename"></b> <a href="#" id="signout">Sign out</a></div>
 </div></header>
 <main><div class="wrap">
-<div class="intro"><h1>Predict a list of materials</h1><p class="explorer-only">Upload a CSV or Excel file with two columns, formula and temp_c. Each row gets a predicted k*.</p><p class="dev-only">POST /api/upload as multipart form data, up to 500 rows, composition-only model. Rows that fail return an error string instead of a value.</p></div>
+<div class="intro"><h1>Predict a list of materials</h1><p class="explorer-only">Upload a CSV or Excel file with two columns, formula and temp_c. Each row gets k*, ionic and electronic conductivity, thermal expansion, polarization resistance, ASR and E above hull.</p><p class="dev-only">POST /api/upload as multipart form data, up to 500 rows, composition-only model. Rows that fail return an error string instead of a value.</p></div>
 <section class="panel stack" style="max-width:980px">
   <form id="bform" novalidate><div class="fields">
     <div class="field"><label for="bfile">File (.csv or .xlsx)</label><input id="bfile" type="file" accept=".csv,.xlsx,.xls"></div>
@@ -30,8 +30,13 @@
     <div class="actions"><button class="btn primary" id="bgo" type="submit">Predict file</button>
     <a class="btn ghost" id="tmpl" download="kstar_template.csv" href="data:text/csv;charset=utf-8,formula%2Ctemp_c%0ALaCoO3%2C700%0ALa0.6Sr0.4Co0.2Fe0.8O3%2C800%0ASm0.5Sr0.5CoO3%2C886%0A" style="text-decoration:none;display:inline-block">Download a template</a></div>
   </form>
-  <div id="bres" hidden><div class="kpis" id="bkpi"></div><h2 style="font-size:18px">Predicted log k*</h2><div id="bchart"></div><div class="tablewrap" style="margin-top:16px"><table class="t" id="btab"></table></div></div>
-</section>
+  <div id="bres" hidden><div class="kpis" id="bkpi"></div>
+    <div class="actions" style="margin-top:6px"><div class="field" style="min-width:240px"><label for="bprop">Show bars for</label><select id="bprop"></select></div><button class="btn ghost" id="bcsv" type="button">Download all values (CSV)</button></div>
+    <h2 style="font-size:18px" id="bhead">Predicted log k*</h2><div id="bchart"></div>
+    <h2 style="font-size:18px;margin-top:22px">All predicted values</h2>
+    <div class="tablewrap" style="margin-top:8px"><table class="t" id="btab"></table></div>
+    <p class="sub" style="margin-top:10px">Ionic conductivity and polarization resistance are physics estimates derived from k*. ASR adds the ohmic loss of a 10 &micro;m layer. Electronic conductivity, TEC and E above hull come from the trained models.</p></div>
+  </section>
 </div></main>
 <script src="config.js"></script><script src="ui.js"></script>
 <script>
@@ -44,6 +49,40 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
   const bars = (el, labels, vals) => { const mx = Math.max(...vals, 1e-9); el.innerHTML = labels.map((l, i) => `<div class="hb"><span>${esc(l)}</span><i style="width:${(vals[i] / mx * 100).toFixed(0)}%"></i><b>${vals[i]}</b></div>`).join(""); };
+  const COLS = [
+    ["log_kstar", "log k*", "log cm/s", "lin", v => v.toFixed(2)],
+    ["sigma_i", "Ionic conductivity", "S/cm", "log", v => v.toExponential(2)],
+    ["sigma_e", "Electronic conductivity (air)", "S/cm", "log", v => v.toExponential(2)],
+    ["tec", "Thermal expansion", "\u00d710\u207b\u2076 /K", "lin", v => v.toFixed(2)],
+    ["rp", "Polarization resistance", "\u03a9\u00b7cm\u00b2", "log", v => v.toExponential(2)],
+    ["asr", "ASR", "\u03a9\u00b7cm\u00b2", "log", v => v.toExponential(2)],
+    ["ehull", "E above hull", "meV/atom", "lin", v => v.toFixed(1)]
+  ];
+  let rowsData = [];
+  const has = v => v !== undefined && v !== null && isFinite(v);
+  $("#bprop").innerHTML = COLS.map(c => `<option value="${c[0]}">${c[1]} (${c[2]})</option>`).join("");
+  $("#bprop").addEventListener("change", () => drawBars());
+  function drawBars() {
+    const key = $("#bprop").value || "log_kstar", c = COLS.find(x => x[0] === key);
+    const ok = rowsData.filter(x => has(x[key]));
+    $("#bhead").textContent = "Bars: " + c[1] + " (" + c[2] + ")";
+    if (!ok.length) { $("#bchart").innerHTML = '<p class="sub">No row has a value for this property.</p>'; return; }
+    const f = v => c[3] === "log" ? Math.log10(Math.max(v, 1e-30)) : v, vals = ok.map(x => f(x[key]));
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
+    $("#bchart").innerHTML = '<small class="sub">Longest bar is the highest value' + (c[3] === "log" ? " (log scale)" : "") + ". Exact values are in the table.</small>" +
+      ok.map((x, i) => `<div class="hb"><span title="${esc(x.formula)} at ${esc(x.temp_c)} \u00b0C">${esc(x.formula.slice(0, 14))} ${esc(x.temp_c)}\u00b0C</span><i style="width:${(8 + 92 * (vals[i] - lo) / span).toFixed(0)}%"></i><b>${c[4](x[key])}</b></div>`).join("");
+  }
+  function drawTable() {
+    $("#btab").innerHTML = "<tr><th>Formula</th><th>T (\u00b0C)</th>" + COLS.map(c => `<th>${c[1]}<br><small>${c[2]}</small></th>`).join("") + "<th>Stable?</th><th>Note</th></tr>" +
+      rowsData.map(x => `<tr><td>${esc(x.formula)}</td><td>${esc(x.temp_c ?? "")}</td>` + COLS.map(c => `<td>${has(x[c[0]]) ? c[4](x[c[0]]) : ""}</td>`).join("") +
+        `<td>${x.stable === undefined ? "" : x.stable ? "Yes" : "No"}</td><td>${esc(x.error || (x.warnings || []).join("; "))}</td></tr>`).join("");
+  }
+  $("#bcsv").addEventListener("click", () => {
+    const q = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const head = ["formula", "temp_c", ...COLS.map(c => c[0]), "kstar_cm_s", "stable", "price_usd_per_kg", "note"];
+    const lines = [head.join(",")].concat(rowsData.map(x => [q(x.formula), x.temp_c ?? "", ...COLS.map(c => has(x[c[0]]) ? x[c[0]] : ""), has(x.kstar) ? x.kstar : "", x.stable === undefined ? "" : x.stable, has(x.price) ? x.price : "", q(x.error || (x.warnings || []).join("; "))].join(",")));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" })); a.download = "perov_ai_batch_results.csv"; a.click();
+  });
   $("#bform").addEventListener("submit", async e => {
     e.preventDefault();
     const f = $("#bfile").files[0];
@@ -54,10 +93,7 @@
       const r = await api("/api/upload", { method: "POST", body: fd }); const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Upload failed.");
       $("#bkpi").innerHTML = `<div class="kpi"><b>${d.n}</b><span>rows</span></div><div class="kpi"><b>${d.n_ok}</b><span>predicted</span></div><div class="kpi"><b>${d.n - d.n_ok}</b><span>need fixing</span></div>`;
-      const ok = d.rows.filter(x => x.log_kstar !== undefined);
-      bars($("#bchart"), ok.map(x => x.formula.slice(0, 12)), ok.map(x => +(x.log_kstar + 11).toFixed(2)));
-      $("#bchart").insertAdjacentHTML("afterbegin", '<small class="sub">Bar length shows log k* + 11, so longer means faster. Exact values are in the table.</small>');
-      $("#btab").innerHTML = "<tr><th>Formula</th><th>T (\u00b0C)</th><th>log k*</th><th>k* (cm/s)</th><th>Note</th></tr>" + d.rows.map(x => `<tr><td>${esc(x.formula)}</td><td>${esc(x.temp_c ?? "")}</td><td>${x.log_kstar === undefined ? "" : x.log_kstar.toFixed(2)}</td><td>${x.kstar === undefined ? "" : x.kstar.toExponential(2)}</td><td>${esc(x.error || (x.warnings || []).join("; "))}</td></tr>`).join("");
+      rowsData = d.rows; drawBars(); drawTable();
       $("#bres").hidden = false; toast(`Predicted ${d.n_ok} of ${d.n} rows.`, d.n_ok === d.n ? "ok" : "info");
     } catch (ex) { toast(ex.message, "error"); }
     finally { btn.disabled = false; btn.textContent = "Predict file"; }
