@@ -124,7 +124,7 @@ let schema = null;
         </div>
       </div>
       ${verdicts(d.assessment)}
-      ${d.analysis && d.analysis.at ? allValues(d.analysis) : propCards(d)}
+      ${d.analysis && d.analysis.at ? allValues(d.analysis) : (d.properties ? propsSection(d.properties) : "")}
       ${d.explain ? shapSection(d.explain) : ""}
       ${d.sweep ? `<div class="chart"><h3>How it changes with temperature</h3>${chart(d, payload)}<p class="note">Same material, temperature varied from ${d.sweep[0].temp_c} to ${d.sweep.at(-1).temp_c} &deg;C.</p></div>` : ""}
       ${(d.warnings && d.warnings.length) ? `<div class="msg" role="alert"><strong>Outside the training data:</strong><br>${d.warnings.map(esc).join("<br>")}<br>Treat this prediction as unreliable.</div>` : ""}
@@ -146,20 +146,18 @@ let schema = null;
 
   function allValues(a){
     const at = a.at || {}, ref = a.lsc_at, vs = a.vs || {};
-    const list = [
-      { n: "log k*", v: minus(at.logk), u: `cm/s at ${Math.round(a.temp_c)} \u00B0C`, t: "ml", sub: ref ? `<div class="vs ref">LSC ${minus(ref.logk)}</div>` : "" },
-      { n: "Ionic conductivity", v: sciT(at.sigma_i), u: "S/cm", t: "ph", sub: vsLine(vs.sigma_i) },
-      { n: "Conductivity (air)", v: sciT(at.sigma_e), u: "S/cm", t: "ml", sub: vsLine(vs.sigma_e) },
-      { n: "Thermal expansion", v: at.tec == null ? "n/a" : at.tec.toFixed(2), u: "\u00D710\u207B\u2076 /K", t: "ml", sub: "" },
-      { n: "Polarization resistance", v: sciT(at.rp), u: "\u03A9\u00B7cm\u00B2", t: "ph", sub: vsLine(vs.rp) },
-      { n: "ASR", v: sciT(at.asr), u: "\u03A9\u00B7cm\u00B2", t: "ph", sub: vsLine(vs.asr) },
-      { n: "E above hull", v: a.ehull == null ? "n/a" : a.ehull.toFixed(1), u: `meV/atom \u00B7 ${a.stability_band || ""}`, t: "ml", sub: `<div class="vs ref">${esc(a.ehull_source || "")}</div>` }
+    const cmp = v => (!v || v.factor == null) ? "" : `${v.up ? "\u2191" : "\u2193"} ${sciT(v.factor)}\u00d7 ${v.up ? "higher" : "lower"} than LSC`;
+    const val = (x, f) => (x == null || !isFinite(x)) ? null : f(x);
+    const rows = [
+      ["Ionic conductivity", val(at.sigma_i, x => `${sci(x)} S cm<sup>-1</sup>`), "Physics estimate (Nernst\u2013Einstein)", cmp(vs.sigma_i)],
+      ["Electronic conductivity (in air)", val(at.sigma_e, x => `${sci(x)} S cm<sup>-1</sup>`), "Predicted from measured data", cmp(vs.sigma_e)],
+      ["Thermal expansion (TEC)", val(at.tec, x => `${x.toFixed(2)} \u00d7 10<sup>-6</sup> K<sup>-1</sup>`), "Predicted from measured data", ""],
+      ["Polarization resistance (Rp)", val(at.rp, x => `${sci(x)} \u03a9 cm<sup>2</sup>`), "Physics estimate (Adler\u2013Lane\u2013Steele)", cmp(vs.rp)],
+      ["ASR", val(at.asr, x => `${sci(x)} \u03a9 cm<sup>2</sup>`), "Rp plus the ohmic loss of a 10 \u00b5m layer", cmp(vs.asr)]
     ];
-    const cards = list.map(c => `<div class="pcard"><div class="nm">${c.n}</div><div class="val">${c.v}</div><div class="un">${c.u}</div><span class="tag ${c.t}">${c.t === "ml" ? "ML" : "Physics estimate"}</span>${c.sub}</div>`).join("");
-    return `<h3 class="vals-h">Predicted properties at the selected temperature</h3>
-      <p class="vals-sub"><span class="tag ml">ML</span> trained on measured data &nbsp; <span class="tag ph">Physics estimate</span> derived from log k* with documented formulas (relative ranking, not measured values).</p>
-      <div class="cardgrid">${cards}</div>
-      <p class="dnote">Ionic conductivity: Nernst\u2013Einstein with D* = k*\u00B7L<sub>c</sub>. Polarization resistance: R<sub>p</sub> = RT/(4F\u00B2c<sub>O</sub>k*). ASR = R<sub>p</sub> plus the ohmic loss of a 10 \u00B5m layer. LSC is ${esc(a.lsc_formula || "LSC")} from the same model at the same temperature.</p>`;
+    return `<div class="verdicts">${rows.map(([lab, v, note, c]) => v == null
+      ? metric(lab, "Not available", "na", "This property could not be predicted for this material.")
+      : metric(lab, v, "info", note + (c ? " \u00b7 " + c : ""), esc(note) + (c ? " &middot; " + esc(c) : ""))).join("")}</div>`;
   }
 
   function propCards(d){
@@ -191,7 +189,7 @@ let schema = null;
       const w = (r.warnings || []).join(" ");
       return metric(lab, fmt(r.value), w ? "warn" : "info", w || ("Predicted from " + (r.mode || "the inputs") + "."), w ? esc(w) : "");
     }).join("");
-    return rows ? `<h3 style="margin:22px 0 8px">Other predicted properties</h3><div class="verdicts">${rows}</div>` : "";
+    return rows ? `<div class="verdicts">${rows}</div>` : "";
   }
 
   function chart(d, payload){
