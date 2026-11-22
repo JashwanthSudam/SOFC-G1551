@@ -1,4 +1,3 @@
-
 :root{
   --paper:#F1F4F3; --card:#FFFFFF; --ink:#13252C; --muted:#586C73; --line:#CBD8D8;
   --glaze:#1D5C78; --glaze-soft:#DCEAF0; --signal:#C98512; --err:#B3402F; --ok:#2F7D5B;
@@ -433,3 +432,12 @@ canvas.lattice{position:absolute!important;inset:0;width:100%;height:100%;z-inde
 @media (min-width:1500px){.openin-seg span{display:inline}}
 
 .field label .unit{font-weight:400;color:var(--muted);font-size:12px}
+
+/* Result page: all predicted values */
+.vals-h{margin:26px 0 2px;font:600 12px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.metric .val{font-size:22px;font-family:var(--display);white-space:nowrap}
+.metric .val small{font:500 13px var(--body);color:var(--muted);margin-left:4px}
+.metric .msub .vs{font-weight:600}
+.metric .msub .vs.good{color:var(--ok)}
+.metric .msub .vs.bad{color:var(--err)}
+@media (max-width:520px){.metric .val{white-space:normal}}
