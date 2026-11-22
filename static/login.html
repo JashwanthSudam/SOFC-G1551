@@ -1,3 +1,154 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=index.html"><title>Perov AI</title>
-<script>location.replace("index.html" + location.search);</script></head><body></body></html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050918">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Perov AI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="pwa.js" defer></script>
+<title>Sign in | Perov AI</title>
+<meta name="description" content="Perov AI predicts oxygen surface exchange, conductivity, thermal expansion and resistance of perovskite cathodes for solid oxide fuel cells.">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css"></head>
+<body class="site login" data-stage="login">
+<canvas id="crystal" aria-hidden="true"></canvas>
+<header class="lbar"><a class="brand" href="index.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a><a class="back" href="index.html">&larr; Back to home</a></header>
+
+<div class="claim" id="claim"><h1>Unlock the science behind <em>advanced materials.</em></h1><p>Predict k*, conductivity, thermal expansion and resistance of perovskite cathodes.</p></div>
+
+<section class="panel" id="panel" aria-labelledby="ttl">
+  <div class="resume" id="resume" hidden>
+    <p>You are signed in as <strong id="resume-email"></strong> (<span id="resume-role"></span>).</p>
+    <button class="btn primary" id="resume-go" type="button">Continue</button>
+    <button class="linkbtn" id="resume-out" type="button">Use a different account</button>
+  </div>
+  <div class="seg" id="roles" role="group" aria-label="Sign in as">
+    <button type="button" id="r-user" aria-pressed="true">Normal user</button>
+    <button type="button" id="r-dev" aria-pressed="false">Developer</button>
+  </div>
+  <h2 id="ttl">Welcome back</h2>
+  <p class="sub" id="sub"></p>
+  <div class="seg" id="tabs" role="group" aria-label="Account" style="margin:16px 0 0">
+    <button type="button" id="t-in" aria-pressed="true">Sign in</button>
+    <button type="button" id="t-up" aria-pressed="false">Create account</button>
+  </div>
+  <form id="af" novalidate>
+    <div class="field"><label for="em">Email</label><input id="em" name="email" type="email" autocomplete="username" placeholder="you@gmail.com"></div>
+    <div class="field"><label for="pw">Password</label>
+      <div class="pwrow"><input id="pw" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters"><button type="button" id="eye" class="btn">Show</button></div></div>
+    <div class="opts"><label><input type="checkbox" id="rem" checked> Remember my email</label></div>
+    <div id="aerr" class="msg" role="alert" hidden></div>
+    <button class="btn primary" id="ago" type="submit">Unlock Perov AI</button>
+  </form>
+  <p class="note" id="note"></p>
+</section>
+
+<section class="status" id="status" aria-live="polite" hidden>
+  <p class="line" id="stline">Verifying credentials<span class="dots"></span></p>
+  <div id="stgrant" hidden><p class="big">ACCESS GRANTED</p><p class="welcome2">Welcome to Perov AI</p></div>
+</section>
+
+<script src="config.js"></script><script src="ui.js"></script><script src="crystal3d.js"></script>
+<script>
+(() => {
+  const $ = s => document.querySelector(s), body = document.body;
+  const params = new URLSearchParams(location.search);
+  let role = params.get("role") === "dev" ? "dev" : "user", mode = "in", busy = false;
+  const crystal = createCrystal($("#crystal"), { ordered: false, pulses: false });
+
+  const wide = () => window.innerWidth > 900;
+  function place() {
+    if (body.dataset.stage === "busy") { crystal.layout(0.5, wide() ? 0.45 : 0.4); crystal.setScale(wide() ? 0.19 : 0.15); }
+    else if (wide()) { crystal.layout(0.3, 0.36); crystal.setScale(0.15); }
+    else { crystal.layout(0.5, 0.2); crystal.setScale(0.115); }
+  }
+  function stage(s) { body.dataset.stage = s; place(); }
+  window.addEventListener("resize", place); place();
+
+  function setRole(r) {
+    role = r; if (r === "dev") mode = "in";
+    $("#r-user").setAttribute("aria-pressed", String(r === "user")); $("#r-dev").setAttribute("aria-pressed", String(r === "dev"));
+    $("#tabs").hidden = r === "dev";
+    $("#note").textContent = r === "dev" ? "Developer access is limited to the project owner\u2019s account, so there is no sign up here." : "Perov AI is for researchers. Predictions are model estimates and must be validated experimentally.";
+    setMode(mode);
+  }
+  function setMode(m) {
+    mode = role === "dev" ? "in" : m;
+    const up = mode === "up";
+    $("#ttl").textContent = role === "dev" ? "Developer sign in" : up ? "Create your account" : "Welcome back";
+    $("#sub").textContent = role === "dev" ? "Enter your developer email and password." : up ? "Use your Gmail and choose a password. Your searches will be saved to it." : "Sign in to continue. Your earlier searches are waiting.";
+    $("#ago").textContent = up ? "Create account & unlock" : "Unlock Perov AI";
+    $("#pw").autocomplete = up ? "new-password" : "current-password";
+    $("#t-in").setAttribute("aria-pressed", String(!up)); $("#t-up").setAttribute("aria-pressed", String(up));
+    $("#aerr").hidden = true;
+  }
+  $("#r-user").onclick = () => setRole("user"); $("#r-dev").onclick = () => setRole("dev");
+  $("#t-in").onclick = () => setMode("in"); $("#t-up").onclick = () => setMode("up");
+  $("#eye").onclick = () => { const s = $("#pw").type === "password"; $("#pw").type = s ? "text" : "password"; $("#eye").textContent = s ? "Hide" : "Show"; };
+  setRole(role);
+  try { const le = localStorage.getItem("kstar-last-email"); if (le) $("#em").value = le; } catch {}
+
+  function fail(m) {
+    const e = $("#aerr"); e.textContent = m; e.hidden = false;
+    const p = $("#panel"); p.classList.remove("shake"); void p.offsetWidth; p.classList.add("shake");
+  }
+
+  $("#af").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (busy) return;
+    const password = $("#pw").value;
+    let email = $("#em").value.trim().replace(/@gmail$/i, "@gmail.com"); $("#em").value = email;
+    $("#aerr").hidden = true;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Enter a valid email address, for example name@gmail.com.");
+    if (!password) return fail("Enter your password.");
+    if (mode === "up" && password.length < 8) return fail("Use a password of at least 8 characters.");
+
+    busy = true;
+    $("#status").hidden = false; $("#stgrant").hidden = true; $("#stline").hidden = false;
+    $("#stline").innerHTML = 'Verifying credentials<span class="dots"></span>';
+    stage("busy");
+    const formed = crystal.start();
+    const auth = (async () => {
+      const r = await api(mode === "up" ? "/api/auth/signup" : "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, role }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Could not sign in.");
+      return d;
+    })();
+    auth.catch(() => {});
+    try {
+      const [d] = await Promise.all([auth, formed]);
+      try { localStorage.setItem("kstar-token", d.token); localStorage.setItem("kstar-role", d.role); localStorage.setItem("kstar-email", d.email); } catch {}
+      try { if ($("#rem").checked) localStorage.setItem("kstar-last-email", email); else localStorage.removeItem("kstar-last-email"); } catch {}
+      try { if (window.PasswordCredential) await Promise.race([navigator.credentials.store(new PasswordCredential({ id: email, password, name: email })), new Promise(r => setTimeout(r, 500))]); } catch {}
+      $("#stline").hidden = true; $("#stgrant").hidden = false;
+      crystal.celebrate();
+      setTimeout(() => { location.href = "predict.html"; }, 2000);
+    } catch (ex) {
+      crystal.reset();
+      busy = false;
+      stage("login");
+      fail(ex.message);
+    }
+  });
+
+  (async () => {
+    let t = null, r = null;
+    try { t = localStorage.getItem("kstar-token"); r = localStorage.getItem("kstar-role"); } catch {}
+    if (!t || !r) return;
+    const drop = () => { try { ["kstar-token", "kstar-role", "kstar-email"].forEach(k => localStorage.removeItem(k)); } catch {} };
+    try {
+      const res = await fetch((window.API_BASE || "") + "/api/auth/me", { headers: { Authorization: "Bearer " + t } });
+      if (!res.ok) { if (res.status === 401) drop(); return; }
+      const u = await res.json();
+      $("#resume-email").textContent = u.email;
+      $("#resume-role").textContent = u.role === "dev" ? "developer" : "normal user";
+      $("#resume").hidden = false;
+      $("#resume-go").onclick = () => { location.href = "predict.html"; };
+      $("#resume-out").onclick = () => { drop(); $("#resume").hidden = true; };
+    } catch {}
+  })();
+})();
+</script></body></html>
