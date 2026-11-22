@@ -1136,6 +1136,28 @@ def analytics():
     return jsonify(dataset=_read_json("dataset_stats.json"), metrics=_read_json("metrics.json"), system=health().get_json())
 
 
+def _batch_props(formula, t, which, desc=None):
+    """Every predicted value for one batch row: ionic and electronic conductivity, TEC, Rp, ASR, E above hull, price."""
+    def g(v):
+        try:
+            v = float(v)
+            return v if math.isfinite(v) else None
+        except (TypeError, ValueError):
+            return None
+    b = _bundle(formula, [round(float(t))], which, desc)
+    at = {k: (v[0] if isinstance(v, list) else v) for k, v in b.items()}
+    out = {"sigma_i": g(at.get("sigma_i")), "sigma_e": g(at.get("sigma_e")), "tec": g(at.get("tec")),
+           "rp": g(at.get("rp")), "asr": g(at.get("asr"))}
+    if desc is not None:
+        e = desc["e"]
+        out["tec"] = g(e.get("TEC")) if e.get("TEC") is not None else out["tec"]
+        out["ehull"] = g(e.get("E_above_hull"))
+        out["price"] = g(desc.get("price"))
+    if out.get("ehull") is not None:
+        out["stable"] = bool(out["ehull"] <= EHULL_STABLE_MAX)
+    return out
+
+
 def _upload_ks(user, df, filename):
     rows, ok = [], []
     for _, r in df.iterrows():
@@ -1149,14 +1171,18 @@ def _upload_ks(user, df, filename):
                 raise ValueError(f"temp_c must be between {ks_engine.T_MIN:.0f} and {ks_engine.T_MAX:.0f}.")
             d = ks_engine.describe(item["formula"])
             item["warnings"] = ks_engine.warnings_for(d, t)
-            ok.append((len(rows), ks_engine.row(d["r"], t)))
+            ok.append((len(rows), ks_engine.row(d["r"], t), d, t))
         except (ValueError, TypeError, KeyError) as exc:
             item["error"] = str(exc)
         rows.append(item)
     if ok:
-        X = pd.DataFrame([x for _, x in ok], columns=ks_engine.FEATURES)
-        for (idx, _), v in zip(ok, ks_engine.model().predict(X)):
+        X = pd.DataFrame([x for _, x, _, _ in ok], columns=ks_engine.FEATURES)
+        for (idx, _, d, t), v in zip(ok, ks_engine.model().predict(X)):
             rows[idx].update(log_kstar=float(v), kstar=float(10.0 ** v))
+            try:
+                rows[idx].update(_batch_props(rows[idx]["formula"], t, "ks", d))
+            except Exception as exc:
+                print("Batch extra values skipped:", exc)
     saved = _save(user, "batch", f"{filename} ({len(ok)} of {len(rows)} rows)", None, "ks", None, None, rows)
     return jsonify(model="ks", n=len(rows), n_ok=len(ok), rows=rows, saved=saved)
 
@@ -1200,14 +1226,18 @@ def upload():
             feats, _, warns = composition.descriptors(item["formula"], t, _state["tables"])
             item["warnings"] = warns
             check_training_range(pd.DataFrame([feats]))
-            ok.append((len(rows), feats))
+            ok.append((len(rows), feats, t))
         except (ValueError, TypeError, KeyError) as exc:
             item["error"] = str(exc)
         rows.append(item)
     if ok:
-        X = pd.DataFrame([f for _, f in ok], columns=list(_state["csvr"].feature_names_in_))
-        for (idx, _), v in zip(ok, model.predict(X)):
+        X = pd.DataFrame([f for _, f, _ in ok], columns=list(_state["csvr"].feature_names_in_))
+        for (idx, _, t), v in zip(ok, model.predict(X)):
             rows[idx].update(log_kstar=float(v), kstar=float(10.0 ** v))
+            try:
+                rows[idx].update(_batch_props(rows[idx]["formula"], t, which))
+            except Exception as exc:
+                print("Batch extra values skipped:", exc)
     saved = _save(user, "batch", f"{f.filename} ({len(ok)} of {len(rows)} rows)", None, which, None, None, rows)
     return jsonify(model=which, n=len(rows), n_ok=len(ok), rows=rows, saved=saved)
 
