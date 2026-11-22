@@ -617,6 +617,51 @@ def _ks_backend(d, temp, at, sigma_e_src):
     return st
 
 
+def _perov_backend(formula, temp, at, eh, source, which):
+    """Developer view for the Perov AI engine (used when the K* Star models are not loaded)."""
+    T = float(temp) + 273.15
+    g = lambda v: None if v is None else float(f"{float(v):.4g}")
+    k = 10.0 ** at["logk"]
+    suf = "rf" if which == "rf" else "svr"
+    st = [
+        {"key": "sigma_i", "title": "Ionic conductivity", "sub": "physics estimate from k*",
+         "code": "D*      = k* * Lc                 # Lc = %g cm\nsigma_i = 4 F^2 c_O D* / (R T)      # Nernst-Einstein" % props.CHAR_LEN,
+         "inputs": {"log_kstar": g(at["logk"]), "T_K": round(T, 2), "Lc_cm": props.CHAR_LEN, "c_O_mol_cm3": props.C_O},
+         "output": {"D_star_cm2_s": g(k * props.CHAR_LEN), "sigma_ionic_S_cm": g(at["sigma_i"])},
+         "kv": {"type": "physics estimate (not trained)", "engine": "Perov AI"}},
+    ]
+    if at.get("sigma_e") is not None:
+        st.append({"key": "sigma_e", "title": "Electronic conductivity", "sub": "trained conductivity model",
+                   "code": "X = [avg_* descriptors from the formula, 1000/T, pO2 = 0.21, pH2O = 0, carrier = 0]\nlog10_sigma = conductivity_%s.predict(X)\nsigma_e = 10 ** log10_sigma" % suf,
+                   "inputs": {"formula": formula, "T_K": round(T, 2), "1000/T": g(1000.0 / T), "pO2_atm": 0.21},
+                   "output": {"sigma_electronic_S_cm": g(at["sigma_e"])},
+                   "kv": {"type": "ML (measured conductivity data)"}})
+    st += [
+        {"key": "tec", "title": "Thermal expansion (TEC)", "sub": "trained TEC model",
+         "code": "TEC = tec_%s.predict([avg_* descriptors from the formula])" % suf,
+         "inputs": {"formula": formula},
+         "output": {"TEC_1e-6_per_K": g(at.get("tec"))},
+         "kv": {"type": "ML"}},
+        {"key": "rp", "title": "Polarization resistance", "sub": "surface-exchange limit",
+         "code": "Rp = R T / (4 F^2 c_O k*)",
+         "inputs": {"k_star_cm_s": g(k), "T_K": round(T, 2), "c_O_mol_cm3": props.C_O},
+         "output": {"Rp_ohm_cm2": g(at["rp"])},
+         "kv": {"type": "physics estimate (not trained)"}},
+        {"key": "asr", "title": "ASR", "sub": "area specific resistance",
+         "code": "ASR = Rp + film / sigma_e          # film = %g cm" % props.FILM_CM,
+         "inputs": {"Rp_ohm_cm2": g(at["rp"]), "sigma_e_S_cm": g(at.get("sigma_e")), "film_cm": props.FILM_CM},
+         "output": {"ASR_ohm_cm2": g(at["asr"])},
+         "kv": {"type": "physics estimate (not trained)"}},
+    ]
+    if eh is not None:
+        st.append({"key": "ehull", "title": "E above hull", "sub": source,
+                   "code": "ehull  = stability_model.predict([composition descriptors])   # meV/atom\nstable = ehull <= %g" % EHULL_STABLE_MAX,
+                   "inputs": {"formula": formula},
+                   "output": {"E_above_hull_meV_atom": g(eh), "stable": bool(eh <= EHULL_STABLE_MAX)},
+                   "kv": {"type": "ML" if source == "ML prediction" else "stored value", "source": source}})
+    return st
+
+
 def build_analysis(formula, temp, sites, feats, which, out, ks=None):
     try:
         temps = sorted(set(CHART_T + TABLE_T + [round(float(temp))]))
@@ -662,6 +707,11 @@ def build_analysis(formula, temp, sites, feats, which, out, ks=None):
                        "dielectric": e["Log_dieletric"], "o_pband": e["O_pband"]})
             try:
                 result["backend"] = _ks_backend(ks, float(temp), at, mine.get("sigma_e_src"))
+            except Exception as exc:
+                print("Developer backend trace skipped:", exc)
+        else:
+            try:
+                result["backend"] = _perov_backend(formula, float(temp), at, eh, source, which)
             except Exception as exc:
                 print("Developer backend trace skipped:", exc)
         return result
