@@ -510,9 +510,11 @@ def _bundle(formula, temps, which, desc=None):
         d = desc or ks_engine.describe(formula)
         out = ks_engine.bundle(d, temps)
         cond, _ = _ml_extra(formula, temps, "svr")  # measured-data conductivity model of this app, if it can read the formula
+        out["sigma_e_src"] = "physics"
         if cond:
             out["sigma_e"] = [10.0 ** c for c in cond]
             out["asr"] = ks_engine.asr(out["rp"], out["sigma_e"])
+            out["sigma_e_src"] = "ml"
         return out
     model = _state["crf"] if which == "rf" and _state["crf"] is not None else _state["csvr"]
     cols = list(_state["csvr"].feature_names_in_)
@@ -549,6 +551,70 @@ def _dataset_ehull(feats):
         return float(raw["E_above_hull"].iloc[i]) if d[i] < 1e-3 else None
     except Exception:
         return None
+
+
+def _ks_backend(d, temp, at, sigma_e_src):
+    """Developer view: how every output other than k* was produced (code, inputs, output), like the k* stages."""
+    import ks_props as KP
+    T = float(temp) + 273.15
+    ml = d["ml"]
+    vref = ks_engine._lsc_vac()
+    k = 10.0 ** at["logk"]
+    fv = float(np.clip(np.exp(-(ml["Oxide_vacancy"] - vref) / (2 * KP.KB * T)), 0.2, 5.0))
+    D = k * KP.LC0 * fv
+    ea = 0.03 + 0.20 * max(ml["Gap"] - 1.0, 0.0)
+    g = lambda v: None if v is None else float(f"{float(v):.4g}")
+    try:
+        trees = len(ks_engine._enh_model()["model"].estimators_)
+    except Exception:
+        trees = None
+    eh = float(d["e"]["E_above_hull"])
+    st = [
+        {"key": "sigma_i", "title": "Ionic conductivity", "sub": "physics estimate from k*",
+         "code": "f_vac   = clip(exp(-(E_vac - E_vac_LSC) / (2 kB T)), 0.2, 5)\nD*      = k* * Lc0 * f_vac        # Lc0 = 5e-3 cm\nsigma_i = 4 F^2 c_O D* / (R T)      # Nernst-Einstein",
+         "inputs": {"log_kstar": g(at["logk"]), "T_K": round(T, 2), "oxide_vacancy_descriptor": g(ml["Oxide_vacancy"]),
+                    "vacancy_descriptor_LSC": g(vref), "Lc0_cm": KP.LC0, "c_O_mol_cm3": KP.CO},
+         "output": {"f_vac": g(fv), "D_star_cm2_s": g(D), "sigma_ionic_S_cm": g(at["sigma_i"])},
+         "kv": {"type": "physics estimate (not trained)", "feeds": "polarization resistance"}},
+    ]
+    if sigma_e_src == "ml":
+        st.append({"key": "sigma_e", "title": "Electronic conductivity", "sub": "trained conductivity model",
+                   "code": "X = [avg_* descriptors from the formula, 1000/T, pO2 = 0.21, pH2O = 0, carrier = 0]\nlog10_sigma = conductivity_svr_pipeline.predict(X)\nsigma_e = 10 ** log10_sigma",
+                   "inputs": {"formula": d["formula"], "T_K": round(T, 2), "1000/T": g(1000.0 / T), "pO2_atm": 0.21},
+                   "output": {"sigma_electronic_S_cm": g(at["sigma_e"])},
+                   "kv": {"type": "ML (measured conductivity data)", "model": "conductivity_svr_pipeline.pkl"}})
+    else:
+        st.append({"key": "sigma_e", "title": "Electronic conductivity", "sub": "physics estimate from the band gap",
+                   "code": "Ea      = 0.03 + 0.20 * max(Gap - 1, 0)   # eV\nsigma_e = (A_E / T) * exp(-Ea / (kB T))        # small polaron",
+                   "inputs": {"Gap_eV": g(ml["Gap"]), "T_K": round(T, 2), "A_E_S_K_cm": KP.A_E},
+                   "output": {"Ea_eV": g(ea), "sigma_electronic_S_cm": g(at["sigma_e"])},
+                   "kv": {"type": "physics estimate (not trained)", "gap_from": "enhanced random forest"}})
+    st += [
+        {"key": "tec", "title": "Thermal expansion (TEC)", "sub": d["source"],
+         "code": "if the formula is in the screened table or training data: use the stored value\nelse: TEC = enhanced_rf.predict([15 descriptors + A/B element fractions])",
+         "inputs": {"formula": d["formula"], "A_site": d["a"], "B_site": d["b"]},
+         "output": {"TEC_1e-6_per_K": g(at["tec"])},
+         "kv": {"type": "ML" if d["source"] == "ML estimate" else "stored value", "source": d["source"], "trees": trees}},
+        {"key": "rp", "title": "Polarization resistance", "sub": "Adler-Lane-Steele model",
+         "code": "Rp = (R T / 4F^2) * sqrt( tau / ((1 - eps) * Av * c_O^2 * D* * k*) )",
+         "inputs": {"k_star_cm_s": g(k), "D_star_cm2_s": g(D), "T_K": round(T, 2), "tau": KP.TAU, "eps": KP.EPS, "Av_1_cm": KP.AV, "c_O_mol_cm3": KP.CO},
+         "output": {"Rp_ohm_cm2": g(at["rp"])},
+         "kv": {"type": "physics estimate (not trained)", "uses": "D* from the ionic conductivity stage"}},
+        {"key": "asr", "title": "ASR", "sub": "area specific resistance",
+         "code": "ASR = Rp + THK * tau / ((1 - eps) * sigma_e)   # 10 um cathode layer",
+         "inputs": {"Rp_ohm_cm2": g(at["rp"]), "sigma_e_S_cm": g(at["sigma_e"]), "THK_cm": KP.THK, "tau": KP.TAU, "eps": KP.EPS},
+         "output": {"ASR_ohm_cm2": g(at["asr"])},
+         "kv": {"type": "physics estimate (not trained)", "electronic_part_from": "ML conductivity model" if sigma_e_src == "ml" else "band-gap estimate"}},
+        {"key": "ehull", "title": "E above hull, price and enhanced descriptors", "sub": d["source"],
+         "code": "x = [15 composition descriptors, A/B element fractions]\nGap, Oxide_vacancy, E_above_hull, TEC, Work_Function, Log_dieletric, O_pband = enhanced_rf.predict([x])\nprice = 10 ** price_rf.predict([A/B element fractions])\nstable = E_above_hull <= 57 meV/atom",
+         "inputs": {"formula": d["formula"], "A_site": d["a"], "B_site": d["b"]},
+         "output": {"E_above_hull_meV_atom": g(eh), "stable": bool(eh <= EHULL_STABLE_MAX), "price_usd_per_kg": g(d["price"]),
+                    "Gap_eV": g(ml["Gap"]), "Oxide_vacancy": g(ml["Oxide_vacancy"]), "Work_Function": g(ml["Work_Function"]),
+                    "Log_dieletric": g(ml["Log_dieletric"]), "O_pband": g(ml["O_pband"])},
+         "kv": {"type": "ML" if d["source"] == "ML estimate" else "stored value", "source": d["source"], "trees": trees,
+                "in_domain": d["domain"].get("inside")}},
+    ]
+    return st
 
 
 def build_analysis(formula, temp, sites, feats, which, out, ks=None):
@@ -594,6 +660,10 @@ def build_analysis(formula, temp, sites, feats, which, out, ks=None):
                 measured=ks_engine.measured_near(ks, float(temp)),
                 extra={"gap": e["Gap"], "oxide_vacancy": e["Oxide_vacancy"], "work_function": e["Work_Function"],
                        "dielectric": e["Log_dieletric"], "o_pband": e["O_pband"]})
+            try:
+                result["backend"] = _ks_backend(ks, float(temp), at, mine.get("sigma_e_src"))
+            except Exception as exc:
+                print("Developer backend trace skipped:", exc)
         return result
     except Exception as exc:
         import traceback
