@@ -1,7 +1,7 @@
 /* Inside the app: choose whether menu pages (Predict, History, Batch...) open in this tab or each in its own tab. */
 (function () {
   var KEY = "kstar-newtab";
-  function get() { try { if (window.matchMedia && matchMedia("(max-width:640px)").matches) return false; return localStorage.getItem(KEY) === "1"; } catch (e) { return false; } }
+  function get() { try { return localStorage.getItem(KEY) === "1"; } catch (e) { return false; } }
   function nm(p) { return "kstar-" + new URL(p, location.href).pathname.replace(/\W/g, ""); }
   window.name = nm(location.pathname);                      // lets other pages find this tab again
   function set(v) { try { localStorage.setItem(KEY, v ? "1" : "0"); } catch (e) {} }
