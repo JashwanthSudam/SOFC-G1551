@@ -104,9 +104,11 @@ let schema = null;
     }
     const dm = a.domain;
     if (dm) rows.push(metric("Domain Applicability",
-      dm.in_dataset ? "In the training data" : dm.inside ? `Inside ${dm.level}% ellipsoid` : `Outside ${dm.level}% ellipsoid`, dm.inside ? "info" : "bad",
+      dm.inside ? "Inside the domain" : "Outside the domain", dm.inside ? "good" : "bad",
       `Distance ${dm.distance} from the centre of the training materials; the ${dm.level}% ellipsoid ends at ${dm.limit}. Outside means the model is extrapolating.`,
-      dm.inside ? "" : "The model is extrapolating here, so treat the prediction as unreliable."));
+      dm.in_dataset ? "This material is in the training data."
+        : dm.inside ? `Within the range of the training materials (${dm.level}% ellipsoid), so the prediction is an interpolation.`
+        : "The model is extrapolating here, so treat the prediction as unreliable."));
     return `<div class="verdicts">${rows.join("")}</div>`;
   }
 
