@@ -296,7 +296,7 @@
     const err = $("#err2"); err.hidden = true;
     if (!schema) { err.textContent = "The model has not loaded yet."; err.hidden = false; return; }
     const formula = $("#formula").value.trim(), temp_c = parseFloat($("#tempname").value), model = $("#model2").value;
-    const btn = $("#go2"); btn.disabled = true; btn.textContent = "Predicting\u2026";
+    const btn = $("#go2"); btn.disabled = true; btn.textContent = "Predicting\u2026"; const rw = window.kstarPrepResult ? kstarPrepResult() : null;
     try {
       const t0 = performance.now();
       const r = await api("/api/predict_composition", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ formula, temp_c, model }) });
@@ -304,9 +304,10 @@
       if (!r.ok) throw new Error(data.error || "The prediction failed.");
       const payload = { model, formula, temp_c, values: data.descriptors };
       try { sessionStorage.setItem("kstar-last", JSON.stringify({ payload, data, roundtrip: performance.now() - t0, formula: data.formula, sites: data.sites, temp_c, schema: { scale: schema.scale, sklearn_version: schema.sklearn_version } })); } catch {}
-      kstarDash.render(data, formula, temp_c);
-      $("#headline").scrollIntoView({ behavior: "smooth", block: "start" });
+      window.kstarGoResult ? kstarGoResult(rw) : (location.href = "result.html");
+      return;
     } catch (ex) {
+      if (window.kstarAbortResult) kstarAbortResult(rw);
       err.textContent = ex.message; err.hidden = false; toast(ex.message, "error");
     } finally {
       btn.disabled = false; btn.textContent = "Predict";
