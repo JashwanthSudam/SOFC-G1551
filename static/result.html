@@ -18,7 +18,7 @@
 <body data-mode="user">
 <header class="top"><div class="wrap">
   <a class="brand" href="predict.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a>
-  <nav class="nav" aria-label="Pages"><a href="predict.html" aria-current="page">Predict</a><a href="history.html">History</a><a href="batch.html">Batch</a><a href="developer.html" class="dev-only">Developer</a><a href="research.html">Research</a>
+  <nav class="nav" aria-label="Pages"><a href="predict.html" aria-current="page">Predict</a><a href="history.html">History</a><a href="batch.html">Batch</a><a href="developer.html" class="dev-only">Developer</a><a href="research.html">Research</a></nav>
   <div class="role"><span id="who"></span><b id="rolename"></b> <a href="#" id="signout">Sign out</a></div>
 </div></header>
 <main><div class="wrap">
@@ -350,6 +350,14 @@ log_kstar = rf.predict(X_new)</pre>
     model.predict(row)</pre>
         <div class="kv"><span>round trip <b>${Math.round(roundtrip)} ms</b></span><span>sklearn <b>${esc(schema.sklearn_version)}</b></span></div>`));
     }
+
+    const bk = d.analysis && d.analysis.backend;
+    if (!bk) s.push(stage("Other predictions", "not sent by the server", `<p class="sub">The server did not send the backend trace for ionic conductivity, electronic conductivity, TEC, polarization resistance, ASR and E above hull. This means the deployed app.py is an older version, or this prediction came from a path that has no trace. Deploy the latest app.py and hard-refresh this page.</p>`));
+    if (bk) bk.forEach(b => s.push(stage(esc(b.title), esc(b.sub), `
+      <div class="cols"><div><h4>Code</h4><pre>${esc(b.code)}</pre></div>
+      <div><h4>Inputs (JSON)</h4><pre>${esc(JSON.stringify(b.inputs, null, 2))}</pre></div></div>
+      <h4>Output (JSON)</h4><pre>${esc(JSON.stringify(b.output, null, 2))}</pre>
+      <div class="kv">${Object.entries(b.kv || {}).map(([k, v]) => `<span>${esc(k.replace(/_/g, " "))} <b>${esc(v)}</b></span>`).join("")}</div>`)));
 
     $("#stages").innerHTML = s.join("");
     requestAnimationFrame(() => document.querySelectorAll(".stage").forEach((el, i) => setTimeout(() => el.classList.add("done"), i * 120)));
