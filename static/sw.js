@@ -1,7 +1,7 @@
 /* Caches the app shell (pages, styles, scripts, icons). API calls always go to the network. */
-const CACHE = "perovai-shell-v12";
+const CACHE = "perovai-shell-v14";
 const SHELL = ["/index.html", "/login.html", "/predict.html", "/history.html", "/style.css", "/theme.js", "/ui.js",
-               "/config.js", "/pwa.js", "/dynamic.js", "/tabs.js", "/lattice.js", "/icon-192.png", "/manifest.json"];
+               "/config.js", "/pwa.js", "/dynamic.js", "/tabs.js", "/lattice.js", "/lattice3d.js", "/predict-dash.js", "/predict-dash.css", "/icon-192.png", "/manifest.json"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(SHELL.map(u => c.add(u)))).then(() => self.skipWaiting()));

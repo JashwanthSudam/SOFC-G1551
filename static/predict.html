@@ -12,41 +12,53 @@
 <script src="dynamic.js" defer></script>
 <script src="tabs.js" defer></script>
 <script src="lattice.js" defer></script>
+<script src="lattice3d.js" defer></script>
+<script src="predict-dash.js" defer></script>
 <title>Predict | Perov AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="predict-dash.css"><script src="theme.js"></script></head>
 <body data-mode="user">
 <header class="top"><div class="wrap">
   <a class="brand" href="predict.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a>
   <nav class="nav" aria-label="Pages"><a href="predict.html" aria-current="page">Predict</a><a href="history.html">History</a><a href="batch.html">Batch</a><a href="developer.html" class="dev-only">Developer</a><a href="research.html">Research</a>
   <div class="role"><span id="who"></span><b id="rolename"></b> <a href="#" id="signout">Sign out</a></div>
 </div></header>
-<main><div class="wrap">
+<main><div class="wrap dwrap">
 <div class="intro">
   <h1>Predict oxygen exchange for a perovskite cathode</h1>
-  <p class="explorer-only">Type a material formula and a temperature, or enter every descriptor yourself. The result opens on the next page.</p>
+  <p class="explorer-only">Type a material formula and pick a temperature, or enter every descriptor yourself. By name, the full analysis appears below; by descriptors, it opens on the next page.</p>
   <p class="dev-only">Inputs are sent as JSON to the Flask endpoint, reordered to the training column order, scaled and passed to the model. Each stage is shown on the result page.</p>
 </div>
+<div class="dtabs" role="tablist" aria-label="Prediction tools">
+  <button type="button" role="tab" data-tab="predict" aria-selected="true">Predict</button>
+  <button type="button" role="tab" data-tab="lowt" aria-selected="false">Low-T finder</button>
+  <button type="button" role="tab" data-tab="cand" aria-selected="false">Candidates</button>
+  <a href="history.html">History</a>
+</div>
+<div id="pane-predict">
 <div class="seg" role="group" aria-label="Input type" style="margin-bottom:18px">
   <button type="button" id="by-desc" aria-pressed="false">By descriptors</button>
   <button type="button" id="by-name" aria-pressed="true">By material name</button>
 </div>
-<section class="panel" id="namepanel" style="max-width:860px">
-  <h2>Material and temperature</h2>
-  <p class="sub">Type the formula and temperature. The properties are worked out from the composition, so you don't enter any descriptors.</p>
+<div class="pgrid" id="namepanel">
+<section class="panel">
+  <h2>Predict k*</h2>
+  <p class="sub">Enter any ABO<sub>3</sub> formula. Dataset compositions and new ones both work; every result is saved to your history.</p>
   <div id="loadmsg2" class="msg" hidden></div>
   <form id="nameform" novalidate>
-    <div class="fields">
-      <div class="field"><label for="formula">Material formula</label><input id="formula" type="text" value="La0.6Sr0.4Co0.2Fe0.8O3" autocomplete="off" spellcheck="false"><small>A-site elements first, then B-site, ending in O3</small></div>
-      <div class="field"><label for="tempname">Temperature (&deg;C)</label><input id="tempname" type="number" step="any" value="800"></div>
-    </div>
+    <div class="field" style="margin-top:14px"><label for="formula">Material formula</label><input id="formula" type="text" list="flist" value="La0.6Sr0.4Co0.2Fe0.8O3" placeholder="e.g. La0.6Sr0.4CoO3 or Ca0.5Sr0.5FeO3" autocomplete="off" spellcheck="false"><datalist id="flist"></datalist><small>A-site elements first, then B-site, ending in O3</small></div>
+    <div class="field tempbox" style="margin-top:14px"><label for="tempname">Operating temperature: <b id="tempout">400 &deg;C</b></label>
+      <input id="tempname" type="range" min="300" max="900" step="25" value="400">
+      <div class="presets" id="tpresets"><span>Low-temp presets:</span><button type="button" data-t="400">400</button><button type="button" data-t="500">500</button><button type="button" data-t="600">600</button><button type="button" data-t="700">700</button><button type="button" data-t="800">800</button></div></div>
     <div class="field" style="margin-top:14px"><label for="exname">Examples</label><select id="exname"></select><small id="exhint"></small></div>
     <div class="modelpick dev-only"><label for="model2">Model</label><select id="model2"><option value="svr">SVR pipeline (scaler + SVR)</option></select></div>
-    <div class="actions"><button class="btn primary" type="submit" id="go2">Predict k*</button></div>
+    <div class="actions"><button class="btn primary" type="submit" id="go2">Predict</button></div>
     <div id="err2" class="msg" role="alert" hidden></div>
   </form>
   <p class="sub" id="elhint" style="margin-top:16px"></p>
 </section>
+<aside class="latticebox" aria-label="Perovskite unit cell"><canvas id="cell3d" aria-hidden="true"></canvas><div class="legend" id="cellnote"><i style="background:#5bd6ec"></i>A-site<i style="background:#d64cd6"></i>B-site<i style="background:#d4a046"></i>O</div></aside>
+</div>
 <section class="panel" id="descpanel" aria-labelledby="h-in" style="max-width:860px" hidden>
   <h2 id="h-in">Material and conditions</h2>
   <p class="sub">Starts from an example material. Pick a test input to try others.</p>
@@ -62,6 +74,21 @@
     </div>
     <div id="err" class="msg" role="alert" hidden></div>
   </form>
+</section>
+<div id="dash" hidden aria-live="polite"></div>
+</div>
+<section class="panel finder" id="pane-lowt" hidden>
+  <h2>Low-T finder</h2>
+  <p class="sub">Ranks the built-in composition library by predicted log k* at a low temperature, skipping compositions far outside the training data. Click Predict on a row to open the full analysis.</p>
+  <div class="trow"><div class="presets"><span>Temperature (&deg;C):</span><button type="button" data-t="400">400</button><button type="button" data-t="500">500</button><button type="button" data-t="600" aria-pressed="true">600</button><button type="button" data-t="700">700</button><button type="button" data-t="800">800</button></div>
+  <label class="chk"><input type="checkbox"> Only predicted-stable</label></div>
+  <div id="lowt-out"></div>
+</section>
+<section class="panel finder" id="pane-cand" hidden>
+  <h2>Candidates</h2>
+  <p class="sub">Compositions predicted to be stable (E above hull within the limit) and at least comparable to LSC (within 0.5 log units) at the chosen temperature. Green “vs LSC” values beat LSC.</p>
+  <div class="trow"><div class="presets"><span>Temperature (&deg;C):</span><button type="button" data-t="400">400</button><button type="button" data-t="500">500</button><button type="button" data-t="600" aria-pressed="true">600</button><button type="button" data-t="700">700</button><button type="button" data-t="800">800</button></div></div>
+  <div id="cand-out"></div>
 </section>
 </div></main>
 <script src="config.js"></script><script src="ui.js"></script>
@@ -80,6 +107,13 @@
   };
 
   let schema = null;
+  function syncT(){
+    const v = $("#tempname").value; $("#tempout").innerHTML = v + " &deg;C";
+    document.querySelectorAll("#tpresets button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.t === String(v))));
+  }
+  $("#tempname").addEventListener("input", syncT);
+  document.querySelectorAll("#tpresets button").forEach(b => b.onclick = () => { $("#tempname").value = b.dataset.t; syncT(); syncT(); });
+  syncT();
   
 
   async function loadSchema(){
@@ -244,15 +278,28 @@
       $("#by-name").hidden = true; inputMode(false); return;
     }
     const ex = (schema.examples || []).filter(e => e.formula);
+    const sugg = [...new Set([...ex.map(e => e.formula), "La0.6Sr0.4CoO3", "La0.6Sr0.4Co0.2Fe0.8O3", "Sm0.5Sr0.5CoO3", "Pr0.6Sr0.4Co0.2Fe0.8O3", "Nd0.6Sr0.4Co0.2Fe0.8O3", "Ba0.5Sr0.5Co0.8Fe0.2O3"])];
+    $("#flist").innerHTML = sugg.map(f => `<option value="${esc(f)}"></option>`).join("");
     $("#exname").innerHTML = '<option value="">Pick an example\u2026</option>' + ex.map((e, i) => `<option value="${i}">${esc(e.formula)} at ${e.temp_c} \u00b0C (measured log k* ${e.true_log_kstar.toFixed(2)})</option>`).join("");
     $("#exname").onchange = () => {
       const e = ex[+$("#exname").value]; if (!e) return;
-      $("#formula").value = e.formula; $("#tempname").value = e.temp_c;
+      $("#formula").value = e.formula; $("#tempname").value = e.temp_c; syncT();
       $("#exhint").textContent = "From the dataset; the prediction should be close to the measured value.";
     };
-    if (schema.models.rf) { const o = document.createElement("option"); o.value = "rf"; o.textContent = "Random Forest (100 trees)"; $("#model2").appendChild(o); }
-    if (schema.elements) $("#elhint").textContent = "Supported A-site elements: " + schema.elements.A.join(", ") + ". Supported B-site elements: " + schema.elements.B.join(", ") + ".";
-    try { const pf = JSON.parse(sessionStorage.getItem("kstar-prefill") || "null"); if (pf) { $("#formula").value = pf.formula; $("#tempname").value = pf.temp_c; inputMode(true); sessionStorage.removeItem("kstar-prefill"); } } catch {}
+    const m2 = $("#model2"), engines = [];
+    if (schema.models.ks) engines.push(["ks", "K* Star models (k*, stability, TEC, band gap, price)"]);
+    engines.push(["svr", "Perov AI SVR pipeline"]);
+    if (schema.models.rf) engines.push(["rf", "Perov AI Random Forest (100 trees)"]);
+    m2.innerHTML = engines.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+    m2.value = engines.some(e => e[0] === schema.default_model) ? schema.default_model : engines[0][0];
+    window.kstarEngine = () => ($("#model2") && $("#model2").value) || schema.default_model || "svr";
+    const hint = () => {
+      const els = (m2.value === "ks" && schema.ks_elements) ? schema.ks_elements : schema.elements, m = schema.ks_metrics;
+      $("#elhint").textContent = (els ? "Supported A-site elements: " + els.A.join(", ") + ". Supported B-site elements: " + els.B.join(", ") + "." : "")
+        + (m2.value === "ks" && m ? " K* Star k* model: R\u00b2 " + m.r2_unseen_materials + " on unseen materials, MAE " + m.mae_unseen_materials + " log units (" + m.n_materials + " materials, " + m.n_rows + " measurements)." : "");
+    };
+    m2.onchange = hint; hint();
+    try { const pf = JSON.parse(sessionStorage.getItem("kstar-prefill") || "null"); if (pf) { $("#formula").value = pf.formula; $("#tempname").value = pf.temp_c; syncT(); inputMode(true); sessionStorage.removeItem("kstar-prefill"); } } catch {}
   }
 
   $("#nameform").addEventListener("submit", async e => {
@@ -260,7 +307,7 @@
     const err = $("#err2"); err.hidden = true;
     if (!schema) { err.textContent = "The model has not loaded yet."; err.hidden = false; return; }
     const formula = $("#formula").value.trim(), temp_c = parseFloat($("#tempname").value), model = $("#model2").value;
-    const btn = $("#go2"); btn.disabled = true; btn.textContent = "Predicting\u2026"; const rw = window.kstarPrepResult ? kstarPrepResult() : null;
+    const btn = $("#go2"); btn.disabled = true; btn.textContent = "Predicting\u2026";
     try {
       const t0 = performance.now();
       const r = await api("/api/predict_composition", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ formula, temp_c, model }) });
@@ -268,10 +315,12 @@
       if (!r.ok) throw new Error(data.error || "The prediction failed.");
       const payload = { model, formula, temp_c, values: data.descriptors };
       try { sessionStorage.setItem("kstar-last", JSON.stringify({ payload, data, roundtrip: performance.now() - t0, formula: data.formula, sites: data.sites, temp_c, schema: { scale: schema.scale, sklearn_version: schema.sklearn_version } })); } catch {}
-      window.kstarGoResult ? kstarGoResult(rw) : (location.href = "result.html");
+      kstarDash.render(data, formula, temp_c);
+      $("#headline").scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (ex) {
-      if (window.kstarAbortResult) kstarAbortResult(rw); err.textContent = ex.message; err.hidden = false; toast(ex.message, "error");
-      btn.disabled = false; btn.textContent = "Predict k*";
+      err.textContent = ex.message; err.hidden = false; toast(ex.message, "error");
+    } finally {
+      btn.disabled = false; btn.textContent = "Predict";
     }
   });
 

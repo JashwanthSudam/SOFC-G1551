@@ -21,13 +21,22 @@
     { key: "rp", label: "log Rp (\u03A9\u00B7cm\u00B2)", short: "Rp (\u03A9\u00B7cm\u00B2)", get: (s, i) => lg(s.rp[i]) },
     { key: "asr", label: "log ASR (\u03A9\u00B7cm\u00B2)", short: "ASR (\u03A9\u00B7cm\u00B2)", get: (s, i) => lg(s.asr[i]) },
   ];
-  let LAST = null, importance = null;
+  let LAST = null, importance = {};
 
   /* ---------- result cards ---------- */
   function vsText(v, what) {
     if (!v) return "";
     return `<div class="vs ${v.good ? "good" : "bad"}">${v.up ? "\u2191" : "\u2193"} ${sci(v.factor)}\u00D7 ${v.up ? "higher" : "lower"} than LSC</div>`;
   }
+  function domainBadge(a) {
+    if (!a.domain) return "";
+    if (a.domain.in_dataset) return `<span class="badge Good">Material is in the training data</span>`;
+    return a.domain.inside ? `<span class="badge lowt">Inside training domain</span>` : `<span class="badge Below">Outside training domain: extrapolation</span>`;
+  }
+  function measuredLine(a) {
+    return a.measured ? `<dt>Measured log k*</dt><dd>${minus(a.measured.logk)} at ${a.measured.T} \u00B0C</dd>` : "";
+  }
+  const engine = () => (window.kstarEngine ? kstarEngine() : "");
   function cards(a, d) {
     const at = a.at, ref = a.lsc_at, vs = a.vs || {};
     const list = [
@@ -39,6 +48,16 @@
       { n: "ASR", v: sci(at.asr), u: "\u03A9\u00B7cm\u00B2", t: "ph", sub: vsText(vs.asr) },
       { n: "E above hull", v: a.ehull == null ? "n/a" : a.ehull.toFixed(1), u: `meV/atom \u00B7 ${a.stability_band || ""}`, t: "ml", sub: `<div class="vs ref">${esc(a.ehull_source)}</div>` },
     ];
+    if (a.extra) {
+      const x = a.extra;
+      list.push(
+        { n: "Band gap", v: x.gap.toFixed(2), u: "eV", t: "ml", sub: "" },
+        { n: "Oxide-vacancy descriptor", v: minus(x.oxide_vacancy), u: "eV", t: "ml", sub: "" },
+        { n: "Work function", v: x.work_function.toFixed(2), u: "eV", t: "ml", sub: "" },
+        { n: "Dielectric constant", v: x.dielectric.toFixed(2), u: "log \u03B5", t: "ml", sub: "" },
+        { n: "O p-band centre", v: minus(x.o_pband), u: "eV", t: "ml", sub: "" },
+        { n: "Est. price", v: a.price == null ? "n/a" : a.price.toFixed(1), u: "USD/kg", t: "ml", sub: "" });
+    }
     return list.map(c => `<div class="pcard"><div class="nm">${c.n}</div><div class="val">${c.v}</div><div class="un">${c.u}</div><span class="tag ${c.t}">${c.t === "ml" ? "ML" : "Physics estimate"}</span>${c.sub}</div>`).join("");
   }
 
@@ -94,10 +113,11 @@
       ${a.p_stable != null && a.ehull_source === "ML prediction" ? `<p class="sub" style="margin-top:8px">Chance of being below the stable limit: about ${Math.round(a.p_stable * 100)}%.</p>` : ""}`;
   }
   async function importanceHTML() {
-    if (!importance) {
-      try { const r = await api("/api/importance"); importance = (await r.json()).importance || { features: [] }; } catch { importance = { features: [] }; }
+    const eng = LAST && LAST.a && LAST.a.engine === "ks" ? "ks" : "";
+    if (!importance[eng]) {
+      try { const r = await api("/api/importance" + (eng ? "?model=ks" : "")); importance[eng] = (await r.json()).importance || { features: [] }; } catch { importance[eng] = { features: [] }; }
     }
-    const f = (importance.features || []).slice(0, 8);
+    const f = (importance[eng].features || []).slice(0, 8);
     if (!f.length) return `<p class="sub">Not available.</p>`;
     const max = Math.max(...f.map(r => r.importance), 1e-9);
     return f.map(r => shr(r.feature, r.importance, max).replace('class="zero"', 'class="zero" hidden')).join("");
@@ -118,7 +138,7 @@
       <section class="panel dsec" id="headline">
         <div class="headline" style="border:0;margin:0;padding:0">
           <div class="logbig">${minus(data.log_kstar)}</div>
-          <div class="badges"><span class="badge ${cls}">${esc(a.rating)}: ${signed(a.delta)} vs LSC at ${a.temp_c} \u00B0C</span>${a.low_t ? `<span class="badge lowt">Low-temperature operation</span>` : ""}</div>
+          <div class="badges"><span class="badge ${cls}">${esc(a.rating)}: ${signed(a.delta)} vs LSC at ${a.temp_c} \u00B0C</span>${a.low_t ? `<span class="badge lowt">Low-temperature operation</span>` : ""}${domainBadge(a)}</div>
           <div class="unitline">log k* (cm/s) at ${a.temp_c} \u00B0C${a.lsc_at ? ` \u00B7 LSC = ${minus(a.lsc_at.logk)}` : ""}</div>
           <dl class="summary">
             <dt>Composition</dt><dd>${esc(data.formula || formula)}</dd>
@@ -127,6 +147,7 @@
             <dt>TEC</dt><dd>${a.at.tec == null ? "n/a" : a.at.tec.toFixed(2) + " \u00D710\u207B\u2076 /K"}</dd>
             <dt>Est. price</dt><dd>${a.price == null ? "n/a" : a.price.toFixed(1) + " $/kg"}</dd>
             <dt>Source of stability</dt><dd>${esc(a.ehull_source)}</dd>
+            ${measuredLine(a)}
           </dl>
           ${(data.warnings || []).length ? `<div class="msg" role="alert" style="margin-top:12px">${data.warnings.map(esc).join("<br>")}</div>` : ""}
         </div>
@@ -134,7 +155,7 @@
       <section class="panel dsec"><h2>Predicted properties at the selected temperature</h2>
         <p class="sub"><span class="tag ml">ML</span> trained on measured data &nbsp; <span class="tag ph">Physics estimate</span> derived from log k* with documented formulas (relative ranking, not measured values).</p>
         <div class="cardgrid">${cards(a, data)}</div>
-        <p class="dnote">Ionic conductivity: Nernst\u2013Einstein with D* = k*\u00B7L<sub>c</sub>. Polarization resistance: R<sub>p</sub> = RT/(4F\u00B2c<sub>O</sub>k*). ASR = R<sub>p</sub> plus the ohmic loss of a 10 \u00B5m layer. LSC is ${esc(a.lsc_formula)} from the same model at the same temperature.</p>
+        <p class="dnote">Ionic conductivity: Nernst\u2013Einstein with D* = k*\u00B7L<sub>c</sub>. Polarization resistance: R<sub>p</sub> = RT/(4F\u00B2c<sub>O</sub>k*). ASR = R<sub>p</sub> plus the ohmic loss of a 10 \u00B5m layer. LSC is ${esc(a.lsc_formula)} from the same model at the same temperature.${a.engine === "ks" ? " Engine: K* Star models (k*, E above hull, TEC, band gap, vacancy descriptor, work function, dielectric, O p-band and price). Here the ionic conductivity and R<sub>p</sub> use the K* Star physics chain (vacancy-corrected D*, Adler\u2013Lane\u2013Steele), and the conductivity is this app\u2019s measured-data model." : ""}</p>
       </section>
       <section class="panel dsec"><div class="chartbar"><div><h2>Property vs temperature</h2><p class="sub">Your composition against the LSC benchmark. Shaded zone = low temperature (\u2264 ${a.low_t_max} \u00B0C).</p></div>
         <select id="proppick" aria-label="Property to plot">${PROPS.map(p => `<option value="${p.key}">${p.label}</option>`).join("")}</select></div>
@@ -167,12 +188,12 @@
     const st = SCREEN[which], out = $(`#${which}-out`);
     out.innerHTML = `<p class="sub">Screening compositions\u2026</p>`;
     try {
-      const r = await api(`/api/screen?temp=${st.temp}&limit=25${st.stable ? "&stable=1" : ""}${st.floor != null ? "&min_delta=" + st.floor : ""}`);
+      const r = await api(`/api/screen?temp=${st.temp}&limit=25${engine() ? "&model=" + engine() : ""}${st.stable ? "&stable=1" : ""}${st.floor != null ? "&min_delta=" + st.floor : ""}`);
       const d = await r.json(); if (!r.ok) throw new Error(d.error || "Screening failed.");
       if (!d.rows.length) { out.innerHTML = `<p class="sub">No composition in the library matches at ${d.temp_c} \u00B0C. Try another temperature.</p>`; return; }
-      out.innerHTML = `<p class="sub">${d.screened.toLocaleString()} compositions screened at ${d.temp_c} \u00B0C \u00B7 ${d.matched} match \u00B7 LSC (${esc(d.lsc_formula)}) = ${minus(d.lsc_logk)}</p>
-        <div class="tscroll"><table class="dtable"><thead><tr><th>#</th><th>Composition</th><th>log k*</th><th>vs LSC</th><th>E hull</th><th>Stable</th><th>$/kg</th><th></th></tr></thead><tbody>
-        ${d.rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.formula)}</td><td>${minus(r.logk)}</td><td class="${r.delta >= 0 ? "up" : "down"}">${signed(r.delta)}</td><td>${r.ehull == null ? "n/a" : r.ehull.toFixed(1)}</td><td>${r.stable == null ? "?" : r.stable ? "yes" : "no"}</td><td>${r.price == null ? "n/a" : r.price.toFixed(1)}</td><td><button type="button" data-f="${esc(r.formula)}" data-t="${d.temp_c}">Predict</button></td></tr>`).join("")}
+      out.innerHTML = `<p class="sub">${d.screened.toLocaleString()} compositions screened at ${d.temp_c} \u00B0C${d.library ? " (" + d.library_size.toLocaleString() + " in the " + (d.library === "generated" ? "built-in" : "K* Star") + " library)" : ""} \u00B7 ${d.matched} match \u00B7 LSC (${esc(d.lsc_formula)}) = ${minus(d.lsc_logk)}</p>
+        <div class="tscroll"><table class="dtable"><thead><tr><th>#</th><th>Composition</th><th>log k*</th><th>vs LSC</th><th>E hull</th><th>Stable</th><th>$/kg</th>${d.rows[0] && d.rows[0].conf ? "<th>Confidence</th>" : ""}<th></th></tr></thead><tbody>
+        ${d.rows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.formula)}</td><td>${minus(r.logk)}</td><td class="${r.delta >= 0 ? "up" : "down"}">${signed(r.delta)}</td><td>${r.ehull == null ? "n/a" : r.ehull.toFixed(1)}</td><td>${r.stable == null ? "?" : r.stable ? "yes" : "no"}</td><td>${r.price == null ? "n/a" : r.price.toFixed(1)}</td>${r.conf ? `<td>${esc(r.conf)}</td>` : ""}<td><button type="button" data-f="${esc(r.formula)}" data-t="${d.temp_c}">Predict</button></td></tr>`).join("")}
         </tbody></table></div>`;
     } catch (ex) { out.innerHTML = `<div class="msg" role="alert">${esc(ex.message)}</div>`; }
   }

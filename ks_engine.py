@@ -109,10 +109,21 @@ def _heavy(name, fname):
 
 
 def _enh_model():
-    for f in ("enhanced_rf.joblib", "enhanced_rf_slim.joblib"):
-        if (HERE / f).exists():
-            return _heavy("enh", f)
-    raise FileNotFoundError("ks/enhanced_rf.joblib is missing")
+    """The enhanced random forest: ks/enhanced_rf.joblib, or the same file split into enhanced_rf.joblib.part1, .part2, ...
+    (the parts let you upload it through the GitHub web page, which refuses files over 25 MB)."""
+    with _lock:
+        if "enh" in _S:
+            return _S["enh"]
+        one = HERE / "enhanced_rf.joblib"
+        if one.exists():
+            _S["enh"] = joblib.load(one)
+        else:
+            import io
+            parts = sorted(HERE.glob("enhanced_rf.joblib.part*"), key=lambda p: int(p.name.rsplit("part", 1)[1]))
+            if not parts:
+                raise FileNotFoundError("ks/enhanced_rf.joblib (or its .part1, .part2 ... pieces) is missing")
+            _S["enh"] = joblib.load(io.BytesIO(b"".join(p.read_bytes() for p in parts)))
+    return _S["enh"]
 
 
 # ---------------------------------------------------------------- formula -> descriptors
