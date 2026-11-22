@@ -9,59 +9,158 @@
 <meta name="apple-mobile-web-app-title" content="Perov AI">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="pwa.js" defer></script>
-<script src="dynamic.js" defer></script>
-<script src="lattice.js" defer></script>
-<title>Welcome | Perov AI</title>
+<title>Perov AI | Unlock the science behind advanced materials</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
-<body>
-<div class="hero">
-  <section class="hero-art">
-    <div>
-      <h1>Perov AI</h1>
-      <p>Perov AI predicts the oxygen-exchange coefficient (k*) of perovskite cathodes. Predict the surface exchange coefficient k* of cathode materials for solid oxide fuel cells, from a model trained on measured data.</p>
-    </div>
-    <svg class="cell" viewBox="30 20 250 240" role="img" aria-label="ABO3 perovskite unit cell">
-      <g class="oct"><path d="M155 67 L130 160 L85 137 Z M155 67 L130 160 L225 137 Z M155 207 L130 160 L85 137 Z M155 207 L130 160 L225 137 Z M155 67 L180 115 L85 137 Z M155 67 L180 115 L225 137 Z M155 207 L180 115 L85 137 Z M155 207 L180 115 L225 137 Z"/></g>
-      <path class="edge" d="M60 90H200V230H60Z M110 45H250V185H110Z M60 90L110 45 M200 90L250 45 M200 230L250 185 M60 230L110 185"/>
-      <g class="a"><circle cx="60" cy="90" r="9"/><circle cx="200" cy="90" r="9"/><circle cx="200" cy="230" r="9"/><circle cx="60" cy="230" r="9"/><circle cx="110" cy="45" r="9"/><circle cx="250" cy="45" r="9"/><circle cx="250" cy="185" r="9"/><circle cx="110" cy="185" r="9"/></g>
-      <circle class="b" cx="155" cy="137" r="10"/>
-      <g class="o"><circle cx="130" cy="160" r="6"/><circle cx="180" cy="115" r="6"/><circle cx="85" cy="137" r="6"/><circle cx="225" cy="137" r="6"/><circle cx="155" cy="67" r="6"/><circle cx="155" cy="207" r="6"/></g>
-    </svg>
-    <small>ABO&#8323; unit cell: A-site cations at the corners, the B-site cation at the centre, oxygen on the face centres.</small>
-  </section>
-  <section class="hero-form">
-    <h2>Welcome</h2>
-    <p class="sub">Choose how you want to use Perov AI. You will sign in on the next page.</p>
-    <div class="research-note" role="note"><strong>For researchers only</strong><span>This tool is for researchers. Predictions are model estimates and must be validated experimentally.</span></div>
-    <div class="resume" id="resume" hidden>
-      <p class="sub" style="margin:0 0 10px">You are signed in as <strong id="resume-email"></strong> (<span id="resume-role"></span>).</p>
-      <button class="btn primary" id="resume-go" type="button" style="width:100%">Continue</button>
-      <button class="btn ghost" id="resume-out" type="button" style="width:100%;margin-top:8px">Use a different account</button>
-    </div>
-    <button class="role-card" id="pick-user"><h3>Normal user</h3><p>Sign in or create an account, predict k* from a material and a temperature, and keep your searches.</p></button>
-    <button class="role-card dev" id="pick-dev"><h3>Developer</h3><p>Sign in to see every step behind a prediction, train models and manage checkpoints.</p></button>
-  </section>
-</div>
-<script>
-  const go = role => { location.href = "login.html?role=" + role; };
-  document.getElementById("pick-user").onclick = () => go("user");
-  document.getElementById("pick-dev").onclick = () => go("dev");
+<link rel="stylesheet" href="unlock.css"></head>
+<body class="unlock" data-stage="welcome">
+<canvas id="crystal" aria-hidden="true"></canvas>
+<header class="brandbar"><a class="brand" href="index.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a></header>
 
+<section class="welcome" id="welcome">
+  <h1>Perov <i>AI</i></h1>
+  <p class="tag">Unlock the science behind advanced materials.</p>
+  <button class="btn primary enter" id="enter" type="button">Sign in</button>
+</section>
+
+<section class="panel" id="panel" aria-labelledby="ttl">
+  <div class="resume" id="resume" hidden>
+    <p>You are signed in as <strong id="resume-email"></strong> (<span id="resume-role"></span>).</p>
+    <button class="btn primary" id="resume-go" type="button" style="margin-top:0">Continue</button>
+    <button class="linkbtn" id="resume-out" type="button">Use a different account</button>
+  </div>
+  <div class="seg" id="roles" role="group" aria-label="Sign in as">
+    <button type="button" id="r-user" aria-pressed="true">Normal user</button>
+    <button type="button" id="r-dev" aria-pressed="false">Developer</button>
+  </div>
+  <h2 id="ttl">Welcome back</h2>
+  <p class="sub" id="sub"></p>
+  <div class="seg" id="tabs" role="group" aria-label="Account" style="margin:16px 0 0">
+    <button type="button" id="t-in" aria-pressed="true">Sign in</button>
+    <button type="button" id="t-up" aria-pressed="false">Create account</button>
+  </div>
+  <form id="af" novalidate>
+    <div class="field"><label for="em">Email</label><input id="em" name="email" type="email" autocomplete="username" placeholder="you@gmail.com"></div>
+    <div class="field"><label for="pw">Password</label>
+      <div class="pwrow"><input id="pw" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters"><button type="button" id="eye" class="btn">Show</button></div></div>
+    <div class="opts"><label><input type="checkbox" id="rem" checked> Remember my email</label></div>
+    <div id="aerr" class="msg" role="alert" hidden></div>
+    <button class="btn primary" id="ago" type="submit">Unlock Perov AI</button>
+  </form>
+  <p class="note" id="note"></p>
+</section>
+
+<section class="status" id="status" aria-live="polite" hidden>
+  <p class="line" id="stline">Verifying credentials<span class="dots"></span></p>
+  <div id="stgrant" hidden><p class="big">ACCESS GRANTED</p><p class="welcome2">Welcome to Perov AI</p></div>
+</section>
+
+<script src="config.js"></script><script src="ui.js"></script><script src="unlock.js"></script>
+<script>
+(() => {
+  const $ = s => document.querySelector(s), body = document.body;
+  const params = new URLSearchParams(location.search);
+  let role = params.get("role") === "dev" ? "dev" : "user", mode = "in", busy = false;
+
+  /* ---- where the crystal sits for each stage ---- */
+  const wide = () => window.innerWidth > 820;
+  function place() {
+    const s = body.dataset.stage;
+    if (s === "login") Crystal.layout(wide() ? 0.3 : 0.5, wide() ? 0.52 : 0.19);
+    else if (s === "busy") Crystal.layout(0.5, wide() ? 0.46 : 0.4);
+    else Crystal.layout(0.5, wide() ? 0.35 : 0.3);
+  }
+  function stage(s) { body.dataset.stage = s; place(); }
+  window.addEventListener("resize", place);
+  place();
+
+  /* ---- welcome -> login ---- */
+  let auto = setTimeout(() => stage("login"), 2600);
+  $("#enter").onclick = () => { clearTimeout(auto); stage("login"); setTimeout(() => $("#em").focus({ preventScroll: true }), 400); };
+
+  /* ---- form state ---- */
+  function setRole(r) {
+    role = r; if (r === "dev") mode = "in";
+    $("#r-user").setAttribute("aria-pressed", String(r === "user")); $("#r-dev").setAttribute("aria-pressed", String(r === "dev"));
+    $("#tabs").hidden = r === "dev";
+    $("#note").textContent = r === "dev" ? "Developer access is limited to the project owner’s account, so there is no sign up here." : "Perov AI is for researchers. Predictions are model estimates and must be validated experimentally.";
+    setMode(mode);
+  }
+  function setMode(m) {
+    mode = role === "dev" ? "in" : m;
+    const up = mode === "up";
+    $("#ttl").textContent = role === "dev" ? "Developer sign in" : up ? "Create your account" : "Welcome back";
+    $("#sub").textContent = role === "dev" ? "Enter your developer email and password." : up ? "Use your Gmail and choose a password. Your searches will be saved to it." : "Sign in to continue. Your earlier searches are waiting.";
+    $("#ago").textContent = up ? "Create account & unlock" : "Unlock Perov AI";
+    $("#pw").autocomplete = up ? "new-password" : "current-password";
+    $("#t-in").setAttribute("aria-pressed", String(!up)); $("#t-up").setAttribute("aria-pressed", String(up));
+    $("#aerr").hidden = true;
+  }
+  $("#r-user").onclick = () => setRole("user"); $("#r-dev").onclick = () => setRole("dev");
+  $("#t-in").onclick = () => setMode("in"); $("#t-up").onclick = () => setMode("up");
+  $("#eye").onclick = () => { const s = $("#pw").type === "password"; $("#pw").type = s ? "text" : "password"; $("#eye").textContent = s ? "Hide" : "Show"; };
+  setRole(role);
+  try { const le = localStorage.getItem("kstar-last-email"); if (le) $("#em").value = le; } catch {}
+
+  function fail(m) {
+    const e = $("#aerr"); e.className = "msg"; e.textContent = m; e.hidden = false;
+    const p = $("#panel"); p.classList.remove("shake"); void p.offsetWidth; p.classList.add("shake");
+  }
+
+  /* ---- the unlock sequence ---- */
+  $("#af").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (busy) return;
+    const password = $("#pw").value;
+    let email = $("#em").value.trim().replace(/@gmail$/i, "@gmail.com"); $("#em").value = email;
+    $("#aerr").hidden = true;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Enter a valid email address, for example name@gmail.com.");
+    if (!password) return fail("Enter your password.");
+    if (mode === "up" && password.length < 8) return fail("Use a password of at least 8 characters.");
+
+    busy = true;
+    $("#status").hidden = false; $("#stgrant").hidden = true; $("#stline").hidden = false;
+    $("#stline").innerHTML = 'Verifying credentials<span class="dots"></span>';
+    stage("busy");
+    const formed = Crystal.start();
+    const auth = (async () => {
+      const r = await api(mode === "up" ? "/api/auth/signup" : "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, role }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Could not sign in.");
+      return d;
+    })();
+    auth.catch(() => {});
+    try {
+      const [d] = await Promise.all([auth, formed]);
+      try { localStorage.setItem("kstar-token", d.token); localStorage.setItem("kstar-role", d.role); localStorage.setItem("kstar-email", d.email); } catch {}
+      try { if ($("#rem").checked) localStorage.setItem("kstar-last-email", email); else localStorage.removeItem("kstar-last-email"); } catch {}
+      try { if (window.PasswordCredential) await Promise.race([navigator.credentials.store(new PasswordCredential({ id: email, password, name: email })), new Promise(r => setTimeout(r, 500))]); } catch {}
+      $("#stline").hidden = true; $("#stgrant").hidden = false;
+      Crystal.celebrate();
+      setTimeout(() => { location.href = "predict.html"; }, 2000);
+    } catch (ex) {
+      Crystal.reset();
+      busy = false;
+      stage("login");
+      fail(ex.message);
+    }
+  });
+
+  /* ---- already signed in ---- */
   (async () => {
-    let t = null, role = null;
-    try { t = localStorage.getItem("kstar-token"); role = localStorage.getItem("kstar-role"); } catch {}
-    if (!t || !role) return;
+    let t = null, r = null;
+    try { t = localStorage.getItem("kstar-token"); r = localStorage.getItem("kstar-role"); } catch {}
+    if (!t || !r) return;
     const drop = () => { try { ["kstar-token", "kstar-role", "kstar-email"].forEach(k => localStorage.removeItem(k)); } catch {} };
     try {
-      const r = await fetch((window.API_BASE || "") + "/api/auth/me", { headers: { Authorization: "Bearer " + t } });
-      if (!r.ok) { if (r.status === 401) drop(); return; }
-      const u = await r.json();
-      document.getElementById("resume-email").textContent = u.email;
-      document.getElementById("resume-role").textContent = u.role === "dev" ? "developer" : "normal user";
-      document.getElementById("resume").hidden = false;
-      document.getElementById("resume-go").onclick = () => { location.href = "predict.html"; };
-      document.getElementById("resume-out").onclick = () => { drop(); document.getElementById("resume").hidden = true; };
+      const res = await fetch((window.API_BASE || "") + "/api/auth/me", { headers: { Authorization: "Bearer " + t } });
+      if (!res.ok) { if (res.status === 401) drop(); return; }
+      const u = await res.json();
+      $("#resume-email").textContent = u.email;
+      $("#resume-role").textContent = u.role === "dev" ? "developer" : "normal user";
+      $("#resume").hidden = false;
+      $("#resume-go").onclick = () => { location.href = "predict.html"; };
+      $("#resume-out").onclick = () => { drop(); $("#resume").hidden = true; };
     } catch {}
   })();
+})();
 </script></body></html>
