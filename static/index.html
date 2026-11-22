@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0E1240">
+<meta name="theme-color" content="#050918">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -9,158 +9,131 @@
 <meta name="apple-mobile-web-app-title" content="Perov AI">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="pwa.js" defer></script>
-<title>Perov AI | Unlock the science behind advanced materials</title>
+<title>Perov AI | Predict perovskite cathode performance</title>
+<meta name="description" content="Perov AI predicts oxygen surface exchange, conductivity, thermal expansion and resistance of perovskite cathodes for solid oxide fuel cells.">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="unlock.css"></head>
-<body class="unlock" data-stage="welcome">
-<canvas id="crystal" aria-hidden="true"></canvas>
-<header class="brandbar"><a class="brand" href="index.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a></header>
+<link rel="stylesheet" href="site.css"></head>
+<body class="site">
+<header class="nav" id="nav"><div class="wrap">
+  <a class="brand" href="index.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a>
+  <nav aria-label="Sections"><a href="#capabilities">Capabilities</a><a href="#how">How it works</a><a href="#start">Get started</a></nav>
+  <a class="btn primary" href="login.html">Sign in</a>
+</div></header>
 
-<section class="welcome" id="welcome">
-  <h1>Perov <i>AI</i></h1>
-  <p class="tag">Unlock the science behind advanced materials.</p>
-  <button class="btn primary enter" id="enter" type="button">Sign in</button>
+<main>
+<section class="hero" id="top">
+  <canvas id="hero3d" aria-hidden="true"></canvas>
+  <div class="wrap"><div class="hero-copy">
+    <span class="eyebrow">Machine learning for solid oxide fuel cells</span>
+    <h1>Predict how perovskite cathodes <em>perform</em>, before you make them.</h1>
+    <p class="lead">Enter an ABO<sub>3</sub> formula and an operating temperature. Perov AI predicts oxygen surface exchange, conductivity, thermal expansion and resistance, then shows what drives each result.</p>
+    <div class="cta"><a class="btn primary" href="login.html">Launch the platform
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      <a class="btn" href="#how">See how it works</a></div>
+    <p class="fine">Research prototype. Results are model estimates and must be validated experimentally.</p>
+  </div></div>
 </section>
 
-<section class="panel" id="panel" aria-labelledby="ttl">
-  <div class="resume" id="resume" hidden>
-    <p>You are signed in as <strong id="resume-email"></strong> (<span id="resume-role"></span>).</p>
-    <button class="btn primary" id="resume-go" type="button" style="margin-top:0">Continue</button>
-    <button class="linkbtn" id="resume-out" type="button">Use a different account</button>
-  </div>
-  <div class="seg" id="roles" role="group" aria-label="Sign in as">
-    <button type="button" id="r-user" aria-pressed="true">Normal user</button>
-    <button type="button" id="r-dev" aria-pressed="false">Developer</button>
-  </div>
-  <h2 id="ttl">Welcome back</h2>
-  <p class="sub" id="sub"></p>
-  <div class="seg" id="tabs" role="group" aria-label="Account" style="margin:16px 0 0">
-    <button type="button" id="t-in" aria-pressed="true">Sign in</button>
-    <button type="button" id="t-up" aria-pressed="false">Create account</button>
-  </div>
-  <form id="af" novalidate>
-    <div class="field"><label for="em">Email</label><input id="em" name="email" type="email" autocomplete="username" placeholder="you@gmail.com"></div>
-    <div class="field"><label for="pw">Password</label>
-      <div class="pwrow"><input id="pw" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters"><button type="button" id="eye" class="btn">Show</button></div></div>
-    <div class="opts"><label><input type="checkbox" id="rem" checked> Remember my email</label></div>
-    <div id="aerr" class="msg" role="alert" hidden></div>
-    <button class="btn primary" id="ago" type="submit">Unlock Perov AI</button>
-  </form>
-  <p class="note" id="note"></p>
-</section>
+<div class="stats"><div class="wrap">
+  <div class="stat"><b data-count="311">311</b><span>measurements in the training data</span></div>
+  <div class="stat"><b data-count="80">80</b><span>perovskite materials</span></div>
+  <div class="stat"><b data-count="6">6</b><span>predicted properties</span></div>
+  <div class="stat"><b>300&ndash;1000&nbsp;&deg;C</b><span>operating temperature range</span></div>
+</div></div>
 
-<section class="status" id="status" aria-live="polite" hidden>
-  <p class="line" id="stline">Verifying credentials<span class="dots"></span></p>
-  <div id="stgrant" hidden><p class="big">ACCESS GRANTED</p><p class="welcome2">Welcome to Perov AI</p></div>
-</section>
+<section class="block" id="capabilities"><div class="wrap">
+  <span class="kicker">Capabilities</span>
+  <h2>Every property that decides a cathode, in one place.</h2>
+  <p class="sub">Type a material name and the platform works out the descriptors itself. No lab data needed to get a first ranking.</p>
+  <div class="grid3">
+    <article class="tilt reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5M18 3v4h-4M6 21v-4h4"/></svg></div><h3>Oxygen surface exchange</h3><p>The rate-limiting property of the cathode, predicted as k* at any temperature in range.</p><span class="unit">log k* &middot; cm/s</span></article>
+    <article class="tilt reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><h3>Ionic conductivity</h3><p>How easily oxide ions move, estimated from k* with the Nernst&ndash;Einstein relation.</p><span class="unit">&sigma;<sub>ion</sub> &middot; S/cm</span></article>
+    <article class="tilt reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><h3>Electronic conductivity</h3><p>Charge transport in air, from a model trained on measured conductivity data.</p><span class="unit">&sigma;<sub>e</sub> &middot; S/cm</span></article>
+    <article class="tilt reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z"/></svg></div><h3>Thermal expansion</h3><p>Check mechanical compatibility with the electrolyte before you commit to a material.</p><span class="unit">TEC &middot; &times;10<sup>-6</sup> /K</span></article>
+    <article class="tilt reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5"/></svg></div><h3>Polarization resistance</h3><p>The resistance set by surface exchange, calculated from k* and temperature.</p><span class="unit">R<sub>p</sub> &middot; &Omega;&middot;cm&sup2;</span></article>
+    <article class="tilt reveal"><div class="ico"><svg viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0M12 18l4-6"/></svg></div><h3>Area-specific resistance</h3><p>Polarization plus the ohmic loss of a thin cathode layer, the figure fuel cell engineers compare.</p><span class="unit">ASR &middot; &Omega;&middot;cm&sup2;</span></article>
+  </div>
+  <div class="chips reveal">
+    <div class="chip"><b>Explainable</b> SHAP shows what drives each prediction</div>
+    <div class="chip"><b>Stability</b> energy above hull for every material</div>
+    <div class="chip"><b>Benchmarked</b> against LSC at the same temperature</div>
+    <div class="chip"><b>Batch mode</b> upload a CSV or Excel list</div>
+  </div>
+</div></section>
 
-<script src="config.js"></script><script src="ui.js"></script><script src="unlock.js"></script>
+<section class="block" id="how"><div class="wrap">
+  <span class="kicker">How it works</span>
+  <h2>From a formula to a ranked result in seconds.</h2>
+  <div class="how">
+    <ol class="steps">
+      <li class="reveal"><div><h3>Describe the material</h3><p>Type a formula such as La0.6Sr0.4Co0.2Fe0.8O3 and a temperature, or enter every descriptor yourself.</p></div></li>
+      <li class="reveal"><div><h3>The models predict</h3><p>Machine learning trained on measured data, combined with documented physics relations for the derived properties.</p></div></li>
+      <li class="reveal"><div><h3>Understand and compare</h3><p>See every value, how it compares with LSC, how stable the material is, and which features moved the answer.</p></div></li>
+    </ol>
+    <div class="stage3d reveal" id="stage3d"><div class="rig" id="rig">
+      <div class="plate p2"></div><div class="plate"></div>
+      <div class="sample"><span class="badge3d">Sample output</span>
+        <div class="top"><b>La<sub>0.6</sub>Sr<sub>0.4</sub>Co<sub>0.2</sub>Fe<sub>0.8</sub>O<sub>3</sub></b><span>at 800 &deg;C</span></div>
+        <div class="tiles">
+          <div class="tile"><small>log k*</small><b>&minus;5.61<i>cm/s</i></b></div>
+          <div class="tile"><small>Ionic conductivity</small><b>4.5&times;10<sup>-3</sup><i>S/cm</i></b></div>
+          <div class="tile"><small>Electronic conductivity</small><b>30<i>S/cm</i></b></div>
+          <div class="tile"><small>Thermal expansion</small><b>16.3<i>&times;10<sup>-6</sup>/K</i></b></div>
+          <div class="tile"><small>Polarization resistance</small><b>0.11<i>&Omega;&middot;cm&sup2;</i></b></div>
+          <div class="tile"><small>E above hull</small><b>61<i>meV/atom</i></b></div>
+        </div>
+        <p class="note">Output of the deployed models for this composition.</p>
+      </div>
+    </div></div>
+  </div>
+</div></section>
+
+<section class="block" id="start" style="padding-top:0"><div class="wrap">
+  <div class="cta-band reveal"><h2>See it on your own material.</h2><p>Sign in, type a formula and get every predicted property on one page.</p>
+    <a class="btn primary" href="login.html">Launch the platform</a></div>
+</div></section>
+</main>
+
+<footer><div class="wrap"><span>&copy; Perov AI &middot; Research prototype</span><span>Predictions are model estimates and must be validated experimentally.</span></div></footer>
+
+<script src="crystal3d.js"></script>
 <script>
 (() => {
-  const $ = s => document.querySelector(s), body = document.body;
-  const params = new URLSearchParams(location.search);
-  let role = params.get("role") === "dev" ? "dev" : "user", mode = "in", busy = false;
-
-  /* ---- where the crystal sits for each stage ---- */
-  const wide = () => window.innerWidth > 820;
-  function place() {
-    const s = body.dataset.stage;
-    if (s === "login") Crystal.layout(wide() ? 0.3 : 0.5, wide() ? 0.52 : 0.19);
-    else if (s === "busy") Crystal.layout(0.5, wide() ? 0.46 : 0.4);
-    else Crystal.layout(0.5, wide() ? 0.35 : 0.3);
+  const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+  const wide = () => window.innerWidth > 900;
+  /* 3D hero */
+  const hero = createCrystal($("#hero3d"), { ordered: true, pulses: true });
+  function place() { if (wide()) { hero.layout(0.74, 0.5); hero.setScale(0.19); } else { hero.layout(0.5, 0.21); hero.setScale(0.125); } }
+  place(); window.addEventListener("resize", place);
+  new IntersectionObserver(es => es.forEach(e => hero.setVisible(e.isIntersecting)), { threshold: 0 }).observe($("#top"));
+  /* nav background */
+  const nav = $("#nav"), onScroll = () => nav.classList.toggle("solid", scrollY > 24); onScroll(); addEventListener("scroll", onScroll, { passive: true });
+  /* reveal on scroll */
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: 0.15 });
+  $$(".reveal").forEach(el => io.observe(el));
+  /* count up */
+  const co = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return; co.unobserve(e.target);
+    const end = +e.target.dataset.count, t0 = performance.now();
+    (function f(t) { const p = Math.min(1, (t - t0) / 1100); e.target.textContent = Math.round(end * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); })(t0);
+  }), { threshold: 0.6 });
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) $$("[data-count]").forEach(el => co.observe(el));
+  /* 3D tilt on the capability cards and the sample panel */
+  if (matchMedia("(hover: hover)").matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    $$(".tilt").forEach(el => {
+      el.addEventListener("pointermove", e => {
+        const r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        el.style.setProperty("--ry", ((x - 0.5) * 14).toFixed(2) + "deg"); el.style.setProperty("--rx", ((0.5 - y) * 14).toFixed(2) + "deg");
+        el.style.setProperty("--mx", (x * 100).toFixed(1) + "%"); el.style.setProperty("--my", (y * 100).toFixed(1) + "%");
+      });
+      el.addEventListener("pointerleave", () => { el.style.setProperty("--rx", "0deg"); el.style.setProperty("--ry", "0deg"); });
+    });
+    const st = $("#stage3d"), rig = $("#rig");
+    st.addEventListener("pointermove", e => {
+      const r = st.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      rig.style.setProperty("--ry", (-12 + (x - 0.5) * 24).toFixed(2) + "deg"); rig.style.setProperty("--rx", (7 + (0.5 - y) * 14).toFixed(2) + "deg");
+    });
+    st.addEventListener("pointerleave", () => { rig.style.setProperty("--ry", "-12deg"); rig.style.setProperty("--rx", "7deg"); });
   }
-  function stage(s) { body.dataset.stage = s; place(); }
-  window.addEventListener("resize", place);
-  place();
-
-  /* ---- welcome -> login ---- */
-  let auto = setTimeout(() => stage("login"), 2600);
-  $("#enter").onclick = () => { clearTimeout(auto); stage("login"); setTimeout(() => $("#em").focus({ preventScroll: true }), 400); };
-
-  /* ---- form state ---- */
-  function setRole(r) {
-    role = r; if (r === "dev") mode = "in";
-    $("#r-user").setAttribute("aria-pressed", String(r === "user")); $("#r-dev").setAttribute("aria-pressed", String(r === "dev"));
-    $("#tabs").hidden = r === "dev";
-    $("#note").textContent = r === "dev" ? "Developer access is limited to the project owner’s account, so there is no sign up here." : "Perov AI is for researchers. Predictions are model estimates and must be validated experimentally.";
-    setMode(mode);
-  }
-  function setMode(m) {
-    mode = role === "dev" ? "in" : m;
-    const up = mode === "up";
-    $("#ttl").textContent = role === "dev" ? "Developer sign in" : up ? "Create your account" : "Welcome back";
-    $("#sub").textContent = role === "dev" ? "Enter your developer email and password." : up ? "Use your Gmail and choose a password. Your searches will be saved to it." : "Sign in to continue. Your earlier searches are waiting.";
-    $("#ago").textContent = up ? "Create account & unlock" : "Unlock Perov AI";
-    $("#pw").autocomplete = up ? "new-password" : "current-password";
-    $("#t-in").setAttribute("aria-pressed", String(!up)); $("#t-up").setAttribute("aria-pressed", String(up));
-    $("#aerr").hidden = true;
-  }
-  $("#r-user").onclick = () => setRole("user"); $("#r-dev").onclick = () => setRole("dev");
-  $("#t-in").onclick = () => setMode("in"); $("#t-up").onclick = () => setMode("up");
-  $("#eye").onclick = () => { const s = $("#pw").type === "password"; $("#pw").type = s ? "text" : "password"; $("#eye").textContent = s ? "Hide" : "Show"; };
-  setRole(role);
-  try { const le = localStorage.getItem("kstar-last-email"); if (le) $("#em").value = le; } catch {}
-
-  function fail(m) {
-    const e = $("#aerr"); e.className = "msg"; e.textContent = m; e.hidden = false;
-    const p = $("#panel"); p.classList.remove("shake"); void p.offsetWidth; p.classList.add("shake");
-  }
-
-  /* ---- the unlock sequence ---- */
-  $("#af").addEventListener("submit", async e => {
-    e.preventDefault();
-    if (busy) return;
-    const password = $("#pw").value;
-    let email = $("#em").value.trim().replace(/@gmail$/i, "@gmail.com"); $("#em").value = email;
-    $("#aerr").hidden = true;
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Enter a valid email address, for example name@gmail.com.");
-    if (!password) return fail("Enter your password.");
-    if (mode === "up" && password.length < 8) return fail("Use a password of at least 8 characters.");
-
-    busy = true;
-    $("#status").hidden = false; $("#stgrant").hidden = true; $("#stline").hidden = false;
-    $("#stline").innerHTML = 'Verifying credentials<span class="dots"></span>';
-    stage("busy");
-    const formed = Crystal.start();
-    const auth = (async () => {
-      const r = await api(mode === "up" ? "/api/auth/signup" : "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, role }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Could not sign in.");
-      return d;
-    })();
-    auth.catch(() => {});
-    try {
-      const [d] = await Promise.all([auth, formed]);
-      try { localStorage.setItem("kstar-token", d.token); localStorage.setItem("kstar-role", d.role); localStorage.setItem("kstar-email", d.email); } catch {}
-      try { if ($("#rem").checked) localStorage.setItem("kstar-last-email", email); else localStorage.removeItem("kstar-last-email"); } catch {}
-      try { if (window.PasswordCredential) await Promise.race([navigator.credentials.store(new PasswordCredential({ id: email, password, name: email })), new Promise(r => setTimeout(r, 500))]); } catch {}
-      $("#stline").hidden = true; $("#stgrant").hidden = false;
-      Crystal.celebrate();
-      setTimeout(() => { location.href = "predict.html"; }, 2000);
-    } catch (ex) {
-      Crystal.reset();
-      busy = false;
-      stage("login");
-      fail(ex.message);
-    }
-  });
-
-  /* ---- already signed in ---- */
-  (async () => {
-    let t = null, r = null;
-    try { t = localStorage.getItem("kstar-token"); r = localStorage.getItem("kstar-role"); } catch {}
-    if (!t || !r) return;
-    const drop = () => { try { ["kstar-token", "kstar-role", "kstar-email"].forEach(k => localStorage.removeItem(k)); } catch {} };
-    try {
-      const res = await fetch((window.API_BASE || "") + "/api/auth/me", { headers: { Authorization: "Bearer " + t } });
-      if (!res.ok) { if (res.status === 401) drop(); return; }
-      const u = await res.json();
-      $("#resume-email").textContent = u.email;
-      $("#resume-role").textContent = u.role === "dev" ? "developer" : "normal user";
-      $("#resume").hidden = false;
-      $("#resume-go").onclick = () => { location.href = "predict.html"; };
-      $("#resume-out").onclick = () => { drop(); $("#resume").hidden = true; };
-    } catch {}
-  })();
 })();
 </script></body></html>
