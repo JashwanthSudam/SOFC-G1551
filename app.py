@@ -777,6 +777,8 @@ def predict_composition():
         return deny
     body = request.get_json(silent=True) or {}
     which = body.get("model") or default_engine()
+    if which == "svr" and _state.get("ks"):  # the Predict page sends "svr" by default: that now runs the K* Star models
+        which = "ks"
     try:
         temp = float(body.get("temp_c"))
         if not math.isfinite(temp) or not -100 < temp < 3000:
@@ -824,7 +826,7 @@ def importance():
     user, deny = need_user()
     if deny:
         return deny
-    if request.args.get("model") == "ks" and _state.get("ks"):
+    if (request.args.get("model") or default_engine()) == "ks" and _state.get("ks"):
         return jsonify(importance=model_importance_ks())
     return jsonify(importance=model_importance())
 

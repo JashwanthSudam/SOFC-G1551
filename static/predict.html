@@ -79,7 +79,7 @@
 </div>
 <section class="panel finder" id="pane-lowt" hidden>
   <h2>Low-T finder</h2>
-  <p class="sub">Ranks the built-in composition library by predicted log k* at a low temperature, skipping compositions far outside the training data. Click Predict on a row to open the full analysis.</p>
+  <p class="sub">Ranks a built-in library of about 2,500 A/B-site combinations by predicted log k* at a low temperature. Click Predict on a row to open the full analysis.</p>
   <div class="trow"><div class="presets"><span>Temperature (&deg;C):</span><button type="button" data-t="400">400</button><button type="button" data-t="500">500</button><button type="button" data-t="600" aria-pressed="true">600</button><button type="button" data-t="700">700</button><button type="button" data-t="800">800</button></div>
   <label class="chk"><input type="checkbox"> Only predicted-stable</label></div>
   <div id="lowt-out"></div>
@@ -286,19 +286,8 @@
       $("#formula").value = e.formula; $("#tempname").value = e.temp_c; syncT();
       $("#exhint").textContent = "From the dataset; the prediction should be close to the measured value.";
     };
-    const m2 = $("#model2"), engines = [];
-    if (schema.models.ks) engines.push(["ks", "K* Star models (k*, stability, TEC, band gap, price)"]);
-    engines.push(["svr", "Perov AI SVR pipeline"]);
-    if (schema.models.rf) engines.push(["rf", "Perov AI Random Forest (100 trees)"]);
-    m2.innerHTML = engines.map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
-    m2.value = engines.some(e => e[0] === schema.default_model) ? schema.default_model : engines[0][0];
-    window.kstarEngine = () => ($("#model2") && $("#model2").value) || schema.default_model || "svr";
-    const hint = () => {
-      const els = (m2.value === "ks" && schema.ks_elements) ? schema.ks_elements : schema.elements, m = schema.ks_metrics;
-      $("#elhint").textContent = (els ? "Supported A-site elements: " + els.A.join(", ") + ". Supported B-site elements: " + els.B.join(", ") + "." : "")
-        + (m2.value === "ks" && m ? " K* Star k* model: R\u00b2 " + m.r2_unseen_materials + " on unseen materials, MAE " + m.mae_unseen_materials + " log units (" + m.n_materials + " materials, " + m.n_rows + " measurements)." : "");
-    };
-    m2.onchange = hint; hint();
+    if (schema.models.rf) { const o = document.createElement("option"); o.value = "rf"; o.textContent = "Random Forest (100 trees)"; $("#model2").appendChild(o); }
+    if (schema.elements) $("#elhint").textContent = "Supported A-site elements: " + schema.elements.A.join(", ") + ". Supported B-site elements: " + schema.elements.B.join(", ") + ".";
     try { const pf = JSON.parse(sessionStorage.getItem("kstar-prefill") || "null"); if (pf) { $("#formula").value = pf.formula; $("#tempname").value = pf.temp_c; syncT(); inputMode(true); sessionStorage.removeItem("kstar-prefill"); } } catch {}
   }
 
