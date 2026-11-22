@@ -7,4 +7,3 @@ openpyxl       # only needed by train.py to read the .xlsx dataset
 gunicorn       # only for hosting (Dockerfile)
 huggingface_hub # optional: model hosting on the Hub
 psycopg2-binary
-pyarrow         # reads ks/library.parquet (92k-composition library of the K* Star models)
