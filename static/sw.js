@@ -1,5 +1,5 @@
 /* Caches the app shell (pages, styles, scripts, icons). API calls always go to the network. */
-const CACHE = "perovai-shell-v17";
+const CACHE = "perovai-shell-v18";
 const SHELL = ["/index.html", "/login.html", "/predict.html", "/history.html", "/style.css", "/theme.js", "/ui.js",
                "/config.js", "/pwa.js", "/dynamic.js", "/tabs.js", "/lattice.js", "/lattice3d.js", "/predict-dash.js", "/predict-dash.css", "/icon-192.png", "/manifest.json"];
 
