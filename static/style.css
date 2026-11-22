@@ -459,20 +459,20 @@ canvas.lattice{position:absolute!important;inset:0;width:100%;height:100%;z-inde
 .vbrow:hover .fill,.vbrow:focus-visible .fill{filter:brightness(1.2)}
 @media (max-width:640px){.vbrow{grid-template-columns:1fr;gap:4px}.vbrow .nm{text-align:left}}
 
-/* ---- compact phone header: brand + account on one line, one slim scrolling row of page links ---- */
+/* ---- compact phone header: brand, then one slim account row (This tab / New tab, role, Sign out, theme), then one scrolling row of page links ---- */
 @media (max-width:640px){
   header.top{padding-top:max(4px,env(safe-area-inset-top))}
   header.top .wrap{flex-wrap:wrap;align-items:center;gap:2px 8px;min-height:0;padding-top:2px;padding-bottom:4px}
-  .brand{flex:1 1 auto;min-width:0;font-size:18px;margin-right:0}
+  .brand{flex:1 1 100%;min-width:0;font-size:18px;margin-right:0}
   .brand svg{width:22px;height:22px}
-  .role{flex:0 0 auto;gap:8px;font-size:13px;flex-wrap:nowrap}
-  .role b{padding:2px 9px;font-size:12px}
-  .role a{padding:4px 2px}
-  .openin-seg{display:none!important}
+  .role{flex:1 1 100%;justify-content:space-between;gap:6px;font-size:13px;flex-wrap:nowrap;min-width:0}
+  .role b{padding:2px 9px;font-size:12px;white-space:nowrap}
+  .role a{padding:4px 2px;white-space:nowrap}
+  .openin-seg{font-size:12px;padding:1px;flex:0 0 auto}
+  .openin-seg span{display:none}
+  .openin-seg button{min-height:28px!important;padding:2px 9px;font-size:12px}
+  .themebtn{width:30px;height:30px;min-height:0!important;flex:0 0 auto}
+  .themebtn svg{width:16px;height:16px}
   .nav{order:3;flex:1 1 100%;width:100%;gap:2px;align-items:center;overflow-x:auto}
   .nav a,.dev-only.nav a{padding:6px 10px;font-size:13.5px;line-height:1.2;min-height:0;border-radius:7px}
-}
-@media (max-width:640px) and (pointer:coarse){
-  .nav a{padding:6px 10px}
-  .role a{padding:4px 2px}
 }
