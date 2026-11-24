@@ -503,7 +503,14 @@ def _ml_extra(formula, temps, which):
         print("ML conductivity/TEC skipped:", exc)
         return None, None
 
-
+def _ml_asr(formula, which, temps):
+    """Trained ASR model (log ASR at 973 K), so only valid near 700 C. None at other temperatures."""
+    try:
+        import predict_both as pb
+        v = pb.predict("asr", formula, None, "rf" if which == "rf" else "svr")["value"]
+        return [10.0 ** v if abs(float(t) - 700) <= 1 else None for t in temps]
+    except Exception:
+        return None
 def _bundle(formula, temps, which, desc=None):
     """log k*, ionic and other conductivity, polarization resistance and ASR for one formula over temperatures."""
     if which == "ks":  # K* Star models: k*, ionic conductivity, Rp and TEC from ks_engine
@@ -515,6 +522,9 @@ def _bundle(formula, temps, which, desc=None):
             out["sigma_e"] = [10.0 ** c for c in cond]
             out["asr"] = ks_engine.asr(out["rp"], out["sigma_e"])
             out["sigma_e_src"] = "ml"
+        a = _ml_asr(formula, "svr", temps)
+        if a:
+            out["asr"] = a
         return out
     model = _state["crf"] if which == "rf" and _state["crf"] is not None else _state["csvr"]
     cols = list(_state["csvr"].feature_names_in_)
@@ -525,6 +535,9 @@ def _bundle(formula, temps, which, desc=None):
     sig_e = [10.0 ** c for c in cond] if cond else [None] * len(temps)
     rp = [props.r_polarization(k, t) for k, t in zip(logk, temps)]
     asr = [props.asr_total(r, se) for r, se in zip(rp, sig_e)]
+    a = _ml_asr(formula, which, temps)
+    if a:
+        asr = a
     return {"logk": logk, "sigma_i": sig_i, "sigma_e": sig_e, "rp": rp, "asr": asr, "tec": tec}
 
 
