@@ -505,17 +505,6 @@ def _ml_extra(formula, temps, which):
         return None, None
 
 
-def _asr_trained(formula, which):
-    """ASR (ohm cm2) at 700 C from the trained ASR model (asr_svr_pipeline.pkl / asr_rf_model.pkl), or None."""
-    try:
-        import predict_both as pb
-        v = pb.predict("asr", formula, None, "rf" if which == "rf" else "svr")["value"]
-        return 10.0 ** float(v)
-    except Exception as exc:
-        print("Trained ASR model skipped:", exc)
-        return None
-
-
 def _bundle(formula, temps, which, desc=None):
     """log k*, ionic and other conductivity, polarization resistance and ASR for one formula over temperatures."""
     if which == "ks":  # K* Star models: k*, ionic conductivity, Rp and TEC from ks_engine
@@ -527,12 +516,6 @@ def _bundle(formula, temps, which, desc=None):
             out["sigma_e"] = [10.0 ** c for c in cond]
             out["asr"] = ks_engine.asr(out["rp"], out["sigma_e"])
             out["sigma_e_src"] = "ml"
-        out["asr_src"] = "physics"
-        a0 = _asr_trained(formula, "svr")
-        if a0:  # trained ASR (at 700 C), moved to other temperatures with the Rp trend
-            ref_rp = ks_engine.bundle(d, [700.0])["rp"][0]
-            out["asr"] = [a0 * r / ref_rp for r in out["rp"]]
-            out["asr_src"] = "ml"
         return out
     model = _state["crf"] if which == "rf" and _state["crf"] is not None else _state["csvr"]
     cols = list(_state["csvr"].feature_names_in_)
@@ -543,14 +526,7 @@ def _bundle(formula, temps, which, desc=None):
     sig_e = [10.0 ** c for c in cond] if cond else [None] * len(temps)
     rp = [props.r_polarization(k, t) for k, t in zip(logk, temps)]
     asr = [props.asr_total(r, se) for r, se in zip(rp, sig_e)]
-    asr_src = "physics"
-    a0 = _asr_trained(formula, which)
-    if a0:  # trained ASR (at 700 C), moved to other temperatures with the Rp trend
-        k700 = float(model.predict(pd.DataFrame([composition.descriptors(formula, 700, _state["tables"])[0]], columns=cols))[0])
-        ref_rp = props.r_polarization(k700, 700)
-        asr = [a0 * r / ref_rp for r in rp]
-        asr_src = "ml"
-    return {"logk": logk, "sigma_i": sig_i, "sigma_e": sig_e, "rp": rp, "asr": asr, "asr_src": asr_src, "tec": tec}
+    return {"logk": logk, "sigma_i": sig_i, "sigma_e": sig_e, "rp": rp, "asr": asr, "tec": tec}
 
 
 def _lsc_bundle(temps, which):
@@ -626,12 +602,10 @@ def _ks_backend(d, temp, at, sigma_e_src):
          "output": {"Rp_ohm_cm2": g(at["rp"])},
          "kv": {"type": "physics estimate (not trained)", "uses": "D* from the ionic conductivity stage"}},
         {"key": "asr", "title": "ASR", "sub": "area specific resistance",
-         "code": ("ASR_700C = 10 ** asr_svr_pipeline.predict([avg_* descriptors])   # trained on measured ASR\nASR(T)   = ASR_700C * Rp(T) / Rp(700 C)" if at.get("asr_src") == "ml"
-                  else "ASR = Rp + THK * tau / ((1 - eps) * sigma_e)   # 10 um cathode layer"),
+         "code": "ASR = Rp + THK * tau / ((1 - eps) * sigma_e)   # 10 um cathode layer",
          "inputs": {"Rp_ohm_cm2": g(at["rp"]), "sigma_e_S_cm": g(at["sigma_e"]), "THK_cm": KP.THK, "tau": KP.TAU, "eps": KP.EPS},
          "output": {"ASR_ohm_cm2": g(at["asr"])},
-         "kv": {"type": "ML (measured ASR data), scaled with temperature" if at.get("asr_src") == "ml" else "physics estimate (not trained)",
-                "electronic_part_from": "ML conductivity model" if sigma_e_src == "ml" else "band-gap estimate"}},
+         "kv": {"type": "physics estimate (not trained)", "electronic_part_from": "ML conductivity model" if sigma_e_src == "ml" else "band-gap estimate"}},
         {"key": "ehull", "title": "E above hull, price and enhanced descriptors", "sub": d["source"],
          "code": "x = [15 composition descriptors, A/B element fractions]\nGap, Oxide_vacancy, E_above_hull, TEC, Work_Function, Log_dieletric, O_pband = enhanced_rf.predict([x])\nprice = 10 ** price_rf.predict([A/B element fractions])\nstable = E_above_hull <= 57 meV/atom",
          "inputs": {"formula": d["formula"], "A_site": d["a"], "B_site": d["b"]},
@@ -675,11 +649,10 @@ def _perov_backend(formula, temp, at, eh, source, which):
          "output": {"Rp_ohm_cm2": g(at["rp"])},
          "kv": {"type": "physics estimate (not trained)"}},
         {"key": "asr", "title": "ASR", "sub": "area specific resistance",
-         "code": ("ASR_700C = 10 ** asr_%s.predict([avg_* descriptors])   # trained on measured ASR\nASR(T)   = ASR_700C * Rp(T) / Rp(700 C)" % suf if at.get("asr_src") == "ml"
-                  else "ASR = Rp + film / sigma_e          # film = %g cm" % props.FILM_CM),
+         "code": "ASR = Rp + film / sigma_e          # film = %g cm" % props.FILM_CM,
          "inputs": {"Rp_ohm_cm2": g(at["rp"]), "sigma_e_S_cm": g(at.get("sigma_e")), "film_cm": props.FILM_CM},
          "output": {"ASR_ohm_cm2": g(at["asr"])},
-         "kv": {"type": "ML (measured ASR data), scaled with temperature" if at.get("asr_src") == "ml" else "physics estimate (not trained)"}},
+         "kv": {"type": "physics estimate (not trained)"}},
     ]
     if eh is not None:
         st.append({"key": "ehull", "title": "E above hull", "sub": source,
