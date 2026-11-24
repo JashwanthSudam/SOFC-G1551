@@ -484,9 +484,8 @@ def respond(df, which, svr, rf, extra_warnings=(), bg=None, assessment=None, ran
 _LSC = {}        # (model, temperature) -> bundle of the LSC benchmark
 _IMPORT = {}     # model-wide SHAP importance, computed once
 _SCREEN = {}     # candidate screening results per temperature
-TABLE_T = [400, 500, 600, 700, 800]
-CHART_T = list(range(300, 901, 50))
-
+TABLE_T = [300, 400, 500, 600, 700, 800, 900, 1000]
+CHART_T = list(range(300, 1001, 50))
 
 def _ml_extra(formula, temps, which):
     """ML conductivity (log10 S/cm, in air) at each temperature, and TEC. (None, None) if unavailable."""
