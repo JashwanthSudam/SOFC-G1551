@@ -27,7 +27,7 @@
 <section class="panel" aria-labelledby="h-out" style="max-width:860px">
   <h2 id="h-out">Predicted k*</h2>
   <div id="result"><div class="empty"><strong>No prediction yet</strong>Go back and run the model first.</div></div>
-  <div class="actions" style="margin-top:22px"><a class="btn primary" href="predict.html" style="text-decoration:none;display:inline-block">Predict another material</a></div>
+  <div class="actions" style="margin-top:22px"><a class="btn primary" href="predict.html" style="text-decoration:none;display:inline-block">Predict another material</a> <button class="btn" id="cifbtn" type="button" style="display:none">Download CIF (crystal structure)</button><p class="note" id="cifmsg" style="display:none"></p></div>
 </section>
 <section class="flow dev-only" id="flow"><h2>What happened to your input</h2><div id="stages"></div></section>
 </div></main>
@@ -372,6 +372,18 @@ log_kstar = rf.predict(X_new)</pre>
     const s = stored.sites || { A: {}, B: {} };
     $("#result").insertAdjacentHTML("afterbegin", `<p class="plain" style="margin-bottom:14px"><strong>${esc(stored.formula)}</strong> at ${esc(stored.temp_c)} &deg;C, predicted from the composition alone (A-site: ${fmt(s.A)}; B-site: ${fmt(s.B)}).</p>`);
   }
+
+  { const fm = stored.formula || (stored.payload && stored.payload.formula), b = $("#cifbtn"), m = $("#cifmsg");
+    if (fm && b) { b.style.display = "inline-block";
+      b.onclick = async () => { m.style.display = "none";
+        try {
+          const r = await fetch((window.API_BASE || "") + "/api/cif?formula=" + encodeURIComponent(fm));
+          if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || "Could not build the CIF"); }
+          const a = document.createElement("a"); a.href = URL.createObjectURL(await r.blob());
+          a.download = fm.replace(/[^A-Za-z0-9_.-]/g, "_") + ".cif"; a.click(); URL.revokeObjectURL(a.href);
+          m.textContent = "Idealised cubic cell with partial site occupancy, not relaxed. Open it in VESTA."; m.style.display = "block";
+        } catch (e) { m.textContent = e.message; m.style.display = "block"; }
+      }; } }
 
 })();
 </script></body></html>
