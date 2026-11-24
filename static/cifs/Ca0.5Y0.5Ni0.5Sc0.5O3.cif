@@ -1,3 +1,31 @@
+# ======================================================================
+# PEROVAI | PEROVSKITE CRYSTAL STRUCTURE RECORD
+# ======================================================================
+# Material / composition : Ca0.5Y0.5Ni0.5Sc0.5O3
+# Structure model        : Idealised cubic perovskite; NOT geometrically relaxed
+# Cell parameter method  : Cell edge estimated using Shannon ionic radii
+# Lattice parameters     : a=3.8563 A, b=3.8563 A, c=3.8563 A
+# Lattice angles         : alpha=90.0 deg, beta=90.0 deg, gamma=90.0 deg
+# Unit-cell volume       : 57.3464 A^3
+# Space-group record     : P 1 (International Tables No. 1; as encoded in source)
+# Mean ionic radius      : A-site=1.208 A; B-site=0.613 A
+# Goldschmidt tolerance  : 0.916
+# Atomic-site occupancy summary (fractional occupancies):
+#   Ca_A     element=Ca occupancy=0.5000
+#   Y_A      element=Y  occupancy=0.5000
+#   Ni_B     element=Ni occupancy=0.5000
+#   Sc_B     element=Sc occupancy=0.5000
+#   O1       element=O  occupancy=1.0000
+#   O2       element=O  occupancy=1.0000
+#   O3       element=O  occupancy=1.0000
+# Interpretation notes:
+# - Fractional coordinates are expressed relative to the unit cell.
+# - Occupancy values describe the modeled fraction of each crystallographic site.
+# - This is a generated idealised structural model, not an experimental refinement.
+# - The symmetry label and operations below are retained exactly as supplied.
+# - Validate symmetry/space-group consistency before symmetry-sensitive calculations.
+# - No oxidation states, thermal parameters, or experimental provenance are inferred here.
+# ======================================================================
 # Idealised cubic perovskite (NOT relaxed). Cell edge estimated from Shannon radii.
 # mean r(A)=1.208 A, mean r(B)=0.613 A, tolerance factor t=0.916
 # source formula: Ca4Y4Ni4Sc4O24

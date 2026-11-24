@@ -1,3 +1,31 @@
+# ======================================================================
+# PEROVAI | PEROVSKITE CRYSTAL STRUCTURE RECORD
+# ======================================================================
+# Material / composition : Ba0.875Bi0.125Fe0.5Cr0.5O3
+# Structure model        : Idealised cubic perovskite; NOT geometrically relaxed
+# Cell parameter method  : Cell edge estimated using Shannon ionic radii
+# Lattice parameters     : a=4.0815 A, b=4.0815 A, c=4.0815 A
+# Lattice angles         : alpha=90.0 deg, beta=90.0 deg, gamma=90.0 deg
+# Unit-cell volume       : 67.9923 A^3
+# Space-group record     : P 1 (International Tables No. 1; as encoded in source)
+# Mean ionic radius      : A-site=1.555 A; B-site=0.592 A
+# Goldschmidt tolerance  : 1.049
+# Atomic-site occupancy summary (fractional occupancies):
+#   Ba_A     element=Ba occupancy=0.8750
+#   Bi_A     element=Bi occupancy=0.1250
+#   Fe_B     element=Fe occupancy=0.5000
+#   Cr_B     element=Cr occupancy=0.5000
+#   O1       element=O  occupancy=1.0000
+#   O2       element=O  occupancy=1.0000
+#   O3       element=O  occupancy=1.0000
+# Interpretation notes:
+# - Fractional coordinates are expressed relative to the unit cell.
+# - Occupancy values describe the modeled fraction of each crystallographic site.
+# - This is a generated idealised structural model, not an experimental refinement.
+# - The symmetry label and operations below are retained exactly as supplied.
+# - Validate symmetry/space-group consistency before symmetry-sensitive calculations.
+# - No oxidation states, thermal parameters, or experimental provenance are inferred here.
+# ======================================================================
 # Idealised cubic perovskite (NOT relaxed). Cell edge estimated from Shannon radii.
 # mean r(A)=1.555 A, mean r(B)=0.592 A, tolerance factor t=1.049
 # source formula: Ba7Bi1Fe4Cr4O24
