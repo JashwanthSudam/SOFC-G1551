@@ -15,7 +15,7 @@
 <script src="lattice.js" defer></script>
 <title>Find composition | Perov AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"><style>.stack>*{min-width:0}#bres{min-width:0;max-width:100%}#bres .hb{grid-template-columns:minmax(110px,170px) 1fr 74px}#bres .hb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#bres .hb b{font-family:var(--mono);font-size:12px}table.t th small{font-weight:400;color:var(--muted)}.want{display:block;font-size:11px;color:var(--muted);font-weight:400}td.hit{font-weight:600}.grid7{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.chk{display:flex;gap:8px;align-items:center;font-size:14px}.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line,#8884)}</style><script src="theme.js"></script></head>
+<link rel="stylesheet" href="style.css"><style>.stack>*{min-width:0}#bres{min-width:0;max-width:100%}#bres .hb{grid-template-columns:minmax(110px,170px) 1fr 74px}#bres .hb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#bres .hb b{font-family:var(--mono);font-size:12px}table.t th small{font-weight:400;color:var(--muted)}.want{display:block;font-size:11px;color:var(--muted);font-weight:400}td.hit{font-weight:600}.grid7{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.chk{display:flex;gap:8px;align-items:center;font-size:14px}tr.best td{background:rgba(255,162,31,.16)}tr.best td:first-child{box-shadow:inset 4px 0 0 #FFA21F}.bestcard{margin:10px 0;padding:14px 16px;border:1px solid #FFA21F;border-radius:12px;background:rgba(255,162,31,.10)}.bestcard b.f{font-size:20px}.bestcard .tag{display:inline-block;margin-right:8px;padding:2px 10px;border-radius:99px;background:#FFA21F;color:#1a1200;font-size:12px;font-weight:700}.bestcard .sm{font-size:13px;color:var(--muted);margin-top:6px}.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line,#8884)}</style><script src="theme.js"></script></head>
 <body data-mode="user">
 <header class="top"><div class="wrap">
   <a class="brand" href="predict.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a>
@@ -44,6 +44,7 @@
   </form>
   <div id="ires" hidden>
     <h2 style="font-size:18px" id="ihead">Closest compositions</h2><p class="sub" id="isub"></p>
+    <div id="ibest" class="bestcard" hidden></div>
     <div class="tablewrap" style="margin-top:8px"><table class="t" id="itab"></table></div>
     <p class="sub" style="margin-top:10px">The search looks through the candidate library, so it returns known ABO<sub>3</sub> compositions, not brand-new ones. The values shown are Perov AI predictions, the same ones the Predict page gives. &ldquo;Match&rdquo; says how close the whole set of values is to what you entered, and the small grey number under a value is what you asked for. Press <b>Predict</b> on a row for the full report.</p></div>
 </section>
@@ -114,12 +115,21 @@
     const d = last, want = d.targets;
     $("#ihead").textContent = "Closest compositions at " + d.temp_c + " \u00b0C";
     $("#isub").textContent = "Searched " + d.searched.toLocaleString() + " of " + d.library_size.toLocaleString() + " candidate compositions.";
-    if (!d.rows.length) { $("#itab").innerHTML = ""; $("#isub").textContent += " Nothing matched. Try fewer values or switch off the stable-only box."; return; }
+    if (!d.rows.length) { $("#ibest").hidden = true; $("#itab").innerHTML = ""; $("#isub").textContent += " Nothing matched. Try fewer values or switch off the stable-only box."; return; }
     $("#itab").innerHTML = "<tr><th>#</th><th>Formula</th><th>Match</th>" + COLS.map(c => `<th>${c[1]}<br><small>${c[2]}</small></th>`).join("") + "<th>Stable?</th><th>Confidence</th><th></th></tr>" +
-      d.rows.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.formula)}</b></td><td><span class="pill">${esc(x.match)}</span></td>` +
+      d.rows.map((x, i) => `<tr class="${i === 0 ? "best" : ""}"><td>${i + 1}</td><td><b>${esc(x.formula)}</b>${i === 0 ? ' <span class="pill" style="background:#FFA21F;color:#1a1200;border-color:#FFA21F;font-weight:700">Best match</span>' : ""}</td><td><span class="pill">${esc(x.match)}</span></td>` +
         COLS.map(c => { const k = c[0], hit = k in want; return `<td class="${hit ? "hit" : ""}">${has(x[k]) ? c[4](x[k]) : ""}${hit ? `<span class="want">wanted ${c[4](want[k])}</span>` : ""}</td>`; }).join("") +
         `<td>${x.stable === undefined ? "" : x.stable ? "Yes" : "No"}</td><td>${esc(x.conf)}</td><td><button type="button" class="btn ghost" data-go="${i}">Predict</button></td></tr>`).join("");
   }
+  function drawBest() {
+    const x = last.rows[0], want = last.targets, bx = $("#ibest"); if (!x) return;
+    const parts = COLS.filter(c => c[0] in want && has(x[c[0]])).map(c => `${c[1]}: ${c[4](x[c[0]])} (wanted ${c[4](want[c[0]])})`);
+    bx.innerHTML = `<span class="tag">Best match</span><b class="f">${esc(x.formula)}</b> <span class="pill">${esc(x.match)}</span>` +
+      `<div class="sm">${parts.map(esc).join(" &middot; ")}${x.stable === undefined ? "" : " &middot; " + (x.stable ? "Stable" : "Above the stable limit")} &middot; Confidence: ${esc(x.conf)}</div>` +
+      `<div class="actions" style="margin-top:10px"><button type="button" class="btn primary" data-go="0">Predict ${esc(x.formula)}</button></div>`;
+    bx.hidden = false;
+  }
+  $("#ibest").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (!b || !last) return; $("#itab").querySelector('[data-go="0"]').click(); });
   $("#itab").addEventListener("click", e => {
     const b = e.target.closest("[data-go]"); if (!b || !last) return;
     const x = last.rows[+b.dataset.go];
@@ -135,7 +145,7 @@
       const r = await api("/api/inverse", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ temp_c: $("#itemp").value, targets, limit: +$("#ilimit").value, stable_only: $("#istable").checked }) });
       const d = await r.json(); if (!r.ok) throw new Error(d.error || "Search failed.");
-      last = d; $("#ilim").textContent = d.stable_limit; draw(); $("#ires").hidden = false;
+      last = d; $("#ilim").textContent = d.stable_limit; draw(); if (d.rows.length) drawBest(); $("#ires").hidden = false;
       toast("Found " + d.rows.length + " composition" + (d.rows.length === 1 ? "" : "s") + ".", d.rows.length ? "ok" : "info");
     } catch (ex) { toast(ex.message, "error"); }
     finally { btn.disabled = false; btn.textContent = "Find compositions"; }
