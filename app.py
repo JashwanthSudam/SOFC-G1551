@@ -514,7 +514,7 @@ def _bundle(formula, temps, which, desc=None):
         out["sigma_e_src"] = "physics"
         if cond:
             out["sigma_e"] = [10.0 ** c for c in cond]
-            out["asr"] = ks_engine.asr(out["rp"], out["sigma_e"])
+            out["asr"] = ks_engine.asr(out["rp"], out["sigma_e"], out["sigma_i"])
             out["sigma_e_src"] = "ml"
         return out
     model = _state["crf"] if which == "rf" and _state["crf"] is not None else _state["csvr"]
@@ -525,7 +525,7 @@ def _bundle(formula, temps, which, desc=None):
     sig_i = [props.sigma_ionic(k, t) for k, t in zip(logk, temps)]
     sig_e = [10.0 ** c for c in cond] if cond else [None] * len(temps)
     rp = [props.r_polarization(k, t) for k, t in zip(logk, temps)]
-    asr = [props.asr_total(r, se) for r, se in zip(rp, sig_e)]
+    asr = [props.asr_total(r, se, si) for r, se, si in zip(rp, sig_e, sig_i)]
     return {"logk": logk, "sigma_i": sig_i, "sigma_e": sig_e, "rp": rp, "asr": asr, "tec": tec}
 
 
@@ -649,7 +649,7 @@ def _perov_backend(formula, temp, at, eh, source, which):
          "output": {"Rp_ohm_cm2": g(at["rp"])},
          "kv": {"type": "physics estimate (not trained)"}},
         {"key": "asr", "title": "ASR", "sub": "area specific resistance",
-         "code": "ASR = Rp + film / sigma_e          # film = %g cm" % props.FILM_CM,
+         "code": "ASR = Rp + film/sigma_e + film/sigma_i + R_extra   # film = %g cm" % props.FILM_CM,
          "inputs": {"Rp_ohm_cm2": g(at["rp"]), "sigma_e_S_cm": g(at.get("sigma_e")), "film_cm": props.FILM_CM},
          "output": {"ASR_ohm_cm2": g(at["asr"])},
          "kv": {"type": "physics estimate (not trained)"}},
