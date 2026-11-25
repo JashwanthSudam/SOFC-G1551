@@ -185,12 +185,14 @@ let schema = null;
 
   function propCards(d){
     const p = d.properties || {}, g = k => (p[k] && p[k].value != null && isFinite(p[k].value)) ? p[k].value : null;
-    const [lo, hi] = schema.scale, cond = g("conductivity"), asr = g("asr"), tec = g("tec");
+    const [lo, hi] = schema.scale, cond = g("conductivity"), asr = g("asr"), tec = g("tec"), ionic = g("ionic_conductivity"), eh = g("ehull");
     const items = [
       { n: "log k*", v: d.log_kstar, lo, hi, text: `${minus(d.log_kstar, 3)} cm s<sup>-1</sup> (log)`, plain: minus(d.log_kstar, 3) },
+      { n: "Ionic conductivity", v: ionic, lo: -8, hi: 0, text: ionic == null ? "" : `${sci(Math.pow(10, ionic))} S cm<sup>-1</sup>`, plain: ionic == null ? "" : String(ionic) },
       { n: "Conductivity (air)", v: cond, lo: -4, hi: 3, text: cond == null ? "" : `${sci(Math.pow(10, cond))} S cm<sup>-1</sup>`, plain: cond == null ? "" : String(cond) },
       { n: "Thermal expansion (TEC)", v: tec, lo: 8, hi: 26, text: tec == null ? "" : `${tec.toFixed(2)} \u00d7 10<sup>-6</sup> K<sup>-1</sup>`, plain: tec == null ? "" : tec.toFixed(2) },
-      { n: "ASR", v: asr, lo: -3, hi: 3, text: asr == null ? "" : `${sci(Math.pow(10, asr))} \u03a9 cm<sup>2</sup>`, plain: asr == null ? "" : String(asr) }
+      { n: "ASR", v: asr, lo: -3, hi: 3, text: asr == null ? "" : `${sci(Math.pow(10, asr))} \u03a9 cm<sup>2</sup>`, plain: asr == null ? "" : String(asr) },
+      { n: "E above hull", v: eh, lo: 0, hi: 150, ref: p.ehull && p.ehull.limit, text: eh == null ? "" : `${eh.toFixed(1)} meV/atom`, plain: eh == null ? "" : eh.toFixed(1) }
     ];
     return vbars(items, "Bars show the value on a fixed typical range for each property (log scale for k*, conductivity and ASR; 8\u201326 for thermal expansion).");
   }
