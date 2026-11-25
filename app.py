@@ -827,6 +827,38 @@ def screen_library(temp):
     return _SCREEN[key]
 
 
+def _fin(v):
+    """A finite float, or None. Keeps the saved history free of NaN / inf / numpy types."""
+    try:
+        v = float(v)
+        return v if math.isfinite(v) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _hist_values(out):
+    """Every predicted value of one result, in plain units, for the History page.
+    log_kstar, kstar (cm/s), sigma_i and sigma_e (S/cm), tec (1e-6 /K), rp and asr (ohm cm2), ehull (meV/atom), price (USD/kg)."""
+    v = {"log_kstar": _fin(out.get("log_kstar")), "kstar": _fin(out.get("kstar"))}
+    a = out.get("analysis")
+    p = out.get("properties") or {}
+    if a:  # name mode: the analysis holds the values at the chosen temperature
+        at = a.get("at") or {}
+        for k in ("sigma_i", "sigma_e", "tec", "rp", "asr"):
+            v[k] = _fin(at.get(k))
+        v["ehull"], v["price"] = _fin(a.get("ehull")), _fin(a.get("price"))
+    else:  # descriptor mode: the properties hold log10 values for the conductivities and ASR
+        def lin(key):
+            x = _fin((p.get(key) or {}).get("value"))
+            return None if x is None else 10.0 ** x
+        v["sigma_i"], v["sigma_e"], v["asr"] = lin("ionic_conductivity"), lin("conductivity"), lin("asr")
+        v["tec"] = _fin((p.get("tec") or {}).get("value"))
+        v["ehull"] = _fin((p.get("ehull") or {}).get("value"))
+    if v.get("ehull") is not None:
+        v["stable"] = bool(v["ehull"] <= EHULL_STABLE_MAX)
+    return v
+
+
 def _save(user, *args):
     """Save a search to history. Never breaks the prediction; tells the page whether it worked."""
     try:
@@ -887,7 +919,8 @@ def predict():
         out["properties"]["ehull"] = {"value": None, "error": str(exc)}
   
     out["saved"] = _save(user, "descriptors", "Custom descriptors", (1000 / inv - 273.15) if inv else None,
-                         which, out["log_kstar"], out["kstar"], body.get("values"))
+                         which, out["log_kstar"], out["kstar"],
+                         {"inputs": {"model": which, "values": body.get("values")}, "values": _hist_values(out)})
     return jsonify(out)
 
 
@@ -916,7 +949,8 @@ def _predict_ks(user, formula, temp):
         props_["tec"] = {"value": float(d["e"]["TEC"]), "mode": "the K* Star model (" + d["source"] + ")"}
     out["properties"] = props_
     out["analysis"] = build_analysis(d["formula"], temp, sites, feats, "ks", out, d)
-    out["saved"] = _save(user, "name", out["formula"], temp, "ks", out["log_kstar"], out["kstar"])
+    out["saved"] = _save(user, "name", out["formula"], temp, "ks", out["log_kstar"], out["kstar"],
+                         {"inputs": {"formula": out["formula"], "temp_c": temp, "model": "ks"}, "values": _hist_values(out)})
     return jsonify(out)
 
 
@@ -967,7 +1001,8 @@ def predict_composition():
     out.update(descriptors=feats, units={k: unit_of(k) for k in feats}, sites=sites, formula=str(body.get("formula", "")).strip(), engine="perov")
     out["properties"] = other_properties(name=out["formula"], descriptors={"1000/T": 1000 / (temp + 273.15)}, model=which)
     out["analysis"] = build_analysis(out["formula"], temp, sites, feats, which, out)
-    out["saved"] = _save(user, "name", out["formula"], temp, which, out["log_kstar"], out["kstar"])
+    out["saved"] = _save(user, "name", out["formula"], temp, which, out["log_kstar"], out["kstar"],
+                         {"inputs": {"formula": out["formula"], "temp_c": temp, "model": which}, "values": _hist_values(out)})
     return jsonify(out)
 
 
@@ -1077,6 +1112,17 @@ def history():
     searches = auth.list_searches(u["id"])
     for item in searches:
         item["time_ist"] = to_ist(item.get("created"))
+        raw, item["detail"] = item.get("detail"), None
+        try:
+            d = json.loads(raw) if raw else None
+        except (TypeError, ValueError):
+            d = None
+        if item["kind"] == "batch":  # batch rows can be large; the page only needs the count
+            item["rows_n"] = len(d) if isinstance(d, list) else None
+        elif isinstance(d, dict):
+            if "inputs" not in d and item["kind"] == "descriptors":  # older rows stored just the typed descriptor values
+                d = {"inputs": {"model": item.get("model"), "values": d}}
+            item["detail"] = d
     return jsonify(searches=searches)
 
 
@@ -1343,8 +1389,21 @@ def inverse():
     rows = rows[:limit]
     for r in rows:
         r["match"] = "Very close" if r["distance"] <= 0.1 else "Close" if r["distance"] <= 0.3 else "Rough"
+    saved = None
+    try:  # every Find composition search goes into History, with the matches it found
+        keep = ("log_kstar", "kstar", "sigma_i", "sigma_e", "tec", "rp", "asr", "ehull", "price", "stable")
+        found = [{"formula": r["formula"], "match": r.get("match"), "distance": _fin(r.get("distance")),
+                  **{k: (r.get(k) if k == "stable" else _fin(r.get(k))) for k in keep if k in r}} for r in rows]
+        top = found[0] if found else {}
+        wanted = ", ".join(f"{INV_KEYS[k]} {targets[k]:g}" for k in targets)
+        saved = _save(user, "find", ("Wanted: " + wanted) if wanted else "Find composition", first["temp_c"], "ks",
+                      top.get("log_kstar"), top.get("kstar"),
+                      {"inputs": {"temp_c": first["temp_c"], "targets": targets, "limit": limit, "stable_only": bool(b.get("stable_only"))},
+                       "values": {k: top[k] for k in keep if k in top}, "results": found})
+    except Exception as exc:
+        print("Find history skipped:", exc)
     return jsonify(temp_c=first["temp_c"], targets=targets, rows=rows, searched=first["searched"], library=first["library"],
-                   library_size=first["library_size"], stable_limit=EHULL_STABLE_MAX)
+                   library_size=first["library_size"], stable_limit=EHULL_STABLE_MAX, saved=saved)
 
 
 def _admin():
