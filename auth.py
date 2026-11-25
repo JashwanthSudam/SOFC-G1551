@@ -35,6 +35,11 @@ TOKEN_DAYS = 30
 # The one and only developer account. Change it on a public host with DEV_EMAIL and DEV_PASSWORD.
 DEV_EMAIL = os.environ.get("DEV_EMAIL", "dev@gmail.com")
 DEV_PASSWORD = os.environ.get("DEV_PASSWORD", "dev@1234")
+# On a public host (Render, Vercel, or a hosted database) the built-in default password must never be used.
+_HOSTED = any(os.environ.get(k) for k in ("VERCEL", "RENDER", "DATABASE_URL", "POSTGRES_URL"))
+if _HOSTED and not os.environ.get("DEV_PASSWORD"):
+    raise RuntimeError("DEV_PASSWORD is not set. On a hosted site, set DEV_PASSWORD (and SECRET_KEY) "
+                       "in the host's environment settings before starting the app.")
 
 
 def _secret():
