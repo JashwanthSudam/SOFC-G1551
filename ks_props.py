@@ -7,6 +7,8 @@ R, F, KB = 8.314, 96485.0, 8.617e-5
 CO = 0.087          # mol O / cm3 (3 O per ~57 A^3 cell)
 LC0 = 5e-3          # cm, characteristic thickness D*/k* of the reference perovskite (50 um)
 TAU, EPS, AV = 3.0, 0.30, 8.4e4   # tortuosity, porosity, surface area per volume (1/cm)
+import os
+R_OHM_EXTRA = float(os.environ.get('ASR_R_OHM_EXTRA', '0.0'))  # electrolyte + contacts, ohm cm2
 THK = 1e-3          # cm, 10 um cathode functional layer
 A_E = 2.2e6         # S K/cm, anchors sigma_e ~1500 S/cm at 800 C for a gapless (metallic-like) perovskite
 
@@ -19,11 +21,11 @@ def properties(logk, T_C, gap, evac, evac_ref):
     ea = 0.03 + 0.20 * np.clip(np.asarray(gap, float) - 1.0, 0, None)
     sig_e = (A_E / T) * np.exp(-ea / (KB * T))
     rp = (R * T / (4 * F**2)) * np.sqrt(TAU / ((1 - EPS) * AV * CO**2 * D * k))
-    asr = rp + THK * TAU / ((1 - EPS) * sig_e)
+    asr = rp + THK * TAU / ((1 - EPS) * sig_e) + R_OHM_EXTRA
     return {'sigma_i': sig_i, 'sigma_e': sig_e, 'rp': rp, 'asr': asr, 'D': D}
 
 
 def asr_from(rp, sigma_e):
     """ASR with a different electronic conductivity (e.g. the ML conductivity model): Rp + ohmic loss of the film."""
     rp = np.asarray(rp, float); se = np.asarray(sigma_e, float)
-    return rp + THK * TAU / ((1 - EPS) * se)
+    return rp + THK * TAU / ((1 - EPS) * se) + R_OHM_EXTRA
