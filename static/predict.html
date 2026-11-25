@@ -133,6 +133,15 @@
       o.value = "rf"; o.textContent = "Random Forest (100 trees)";
       $("#model").appendChild(o);
     }
+    try {  // "Run again" on a customised search in History
+      const pf = JSON.parse(sessionStorage.getItem("kstar-desc-prefill") || "null");
+      if (pf && pf.values) {
+        sessionStorage.removeItem("kstar-desc-prefill");
+        setValues(pf.values); inputMode(false);
+        if (pf.model && [...$("#model").options].some(o => o.value === pf.model)) $("#model").value = pf.model;
+        toast("Loaded your earlier values. Press Predict to run again.", "ok");
+      }
+    } catch {}
   }
 
   const hasTemp = () => schema.features.some(f => f.name === "1000/T");
