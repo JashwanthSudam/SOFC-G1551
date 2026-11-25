@@ -129,9 +129,13 @@ def _enh_model():
 # ---------------------------------------------------------------- formula -> descriptors
 def parse(formula):
     f = re.sub(r"O\d*\.?\d*$", "", str(formula).replace(" ", "").replace("(", "").replace(")", ""))
-    items = [(m[0], float(m[1] or 1)) for m in re.findall(r"([A-Z][a-z]?)([\d.]*)", f)]
-    if not items:
-        raise ValueError("Could not read the formula. Example: La0.6Sr0.4CoO3")
+    found = re.findall(r"([A-Z][a-z]?)([\d.]*)", f)
+    if not found or "".join(e + n for e, n in found) != f:  # leftover characters = not a real formula
+        raise ValueError("Could not read the formula. Use element symbols and numbers only, like La0.6Sr0.4CoO3.")
+    try:
+        items = [(e, float(n or 1)) for e, n in found]
+    except ValueError:
+        raise ValueError("Could not read the formula. A number such as 0.6 must follow an element symbol.")
     a, b, s = {}, {}, 0.0
     for e, x in items:  # the first group that sums to 1 is the A-site, the rest is the B-site
         (a if s < 0.999 else b)[e] = x
