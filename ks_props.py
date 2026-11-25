@@ -21,11 +21,14 @@ def properties(logk, T_C, gap, evac, evac_ref):
     ea = 0.03 + 0.20 * np.clip(np.asarray(gap, float) - 1.0, 0, None)
     sig_e = (A_E / T) * np.exp(-ea / (KB * T))
     rp = (R * T / (4 * F**2)) * np.sqrt(TAU / ((1 - EPS) * AV * CO**2 * D * k))
-    asr = rp + THK * TAU / ((1 - EPS) * sig_e) + R_OHM_EXTRA
+    asr = rp + THK * TAU / ((1 - EPS) * sig_e) + THK * TAU / ((1 - EPS) * sig_i) + R_OHM_EXTRA
     return {'sigma_i': sig_i, 'sigma_e': sig_e, 'rp': rp, 'asr': asr, 'D': D}
 
 
-def asr_from(rp, sigma_e):
+def asr_from(rp, sigma_e, sigma_i=None):
     """ASR with a different electronic conductivity (e.g. the ML conductivity model): Rp + ohmic loss of the film."""
     rp = np.asarray(rp, float); se = np.asarray(sigma_e, float)
-    return rp + THK * TAU / ((1 - EPS) * se) + R_OHM_EXTRA
+    out = rp + THK * TAU / ((1 - EPS) * se) + R_OHM_EXTRA
+    if sigma_i is not None:
+        out = out + THK * TAU / ((1 - EPS) * np.asarray(sigma_i, float))
+    return out
