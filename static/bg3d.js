@@ -1,16 +1,15 @@
-/* Perov AI 3D background: evenly spread glossy spheres and slowly turning molecule clusters in purple and yellow,
-   covering the whole page in both light and dark theme. Plain canvas, no library.
-   Include once per app page:  <script src="bg3d.js" defer></script>
-   Pauses when the tab is hidden; draws one still frame if the visitor prefers reduced motion.
-   Tune the look in CONFIG. */
+/* Perov AI background: a still, soft purple and yellow scene (glossy bubbles, sparkles, tiny molecules)
+   covering the whole page in light and dark theme. No animation: it is drawn once and again only when the
+   window is resized or the theme changes. Plain canvas, no library.
+   Include once per app page:  <script src="bg3d.js" defer></script>   Tune the look in CONFIG. */
 (function () {
   "use strict";
   var CONFIG = {
     cols: 5, rows: 4,     // one sphere per grid cell on desktop (phones use 3 x 5), so the page is covered evenly
     clusters: 3,          // molecule clusters on desktop (2 on phones)
-    dust: 60,             // tiny twinkling points
-    speed: 1,             // 0.5 slower, 2 faster
-    parallax: 1           // 0 turns the pointer / tilt / scroll depth effect off
+    dust: 60,             // tiny dots
+    sparkles: 16,         // little four-point stars
+    seed: 7               // change the number for a different (but still fixed) layout
   };
   var PAL = {              // [highlight, light, base, shadow]
     purple: [[238, 229, 255], [178, 144, 255], [114, 68, 232], [44, 20, 118]],
@@ -42,137 +41,89 @@
   ].join("");
   var st = document.createElement("style"); st.id = "bg3d-style"; st.textContent = css; document.head.appendChild(st);
 
-  var cv, g, W = 0, H = 0, dpr = 1, unit = 800, small = false, light = false;
-  var items = [], dust = [], mx = 0, my = 0, px = 0, py = 0, sy = 0, running = false, last = 0, t0 = 0;
-
-  function rnd(a, b) { return a + Math.random() * (b - a); }
-  function pick() { return PAL[KEYS[(Math.random() * KEYS.length) | 0]]; }
+  var cv, g, W = 0, H = 0, dpr = 1, unit = 800, small = false, light = false, rt = 0;
+  var rs = 1;
+  function rand() { rs |= 0; rs = rs + 0x6D2B79F5 | 0; var t = Math.imul(rs ^ rs >>> 15, 1 | rs); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+  function rnd(a, b) { return a + rand() * (b - a); }
+  function pick() { return PAL[KEYS[(rand() * KEYS.length) | 0]]; }
   function rgba(c, a) { return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; }
 
-  function build() {
-    var cols = small ? 3 : CONFIG.cols, rows = small ? 5 : CONFIG.rows, nc = small ? 2 : CONFIG.clusters, i, j, k, c, r;
-    items = []; dust = [];
-    for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {           // one sphere per cell, jittered: even coverage, no clumps
-      var d = rnd(0.4, 1);
-      items.push({ kind: 0, u: (c + rnd(0.15, 0.85)) / cols, v: (r + rnd(0.15, 0.85)) / rows, d: d, r: rnd(0.034, 0.07),
-        pal: pick(), ph: rnd(0, 6.28), rate: rnd(0.006, 0.016), sw: rnd(0.4, 0.9), a: rnd(0.55, 0.85) });
+  function ball(x, y, r, pal, alpha, halo) {
+    if (r < 0.6) return;
+    var gr;
+    if (halo) {
+      gr = g.createRadialGradient(x, y, r * 0.8, x, y, r * 2.2);
+      gr.addColorStop(0, rgba(pal[1], (light ? 0.14 : 0.2) * alpha)); gr.addColorStop(1, rgba(pal[1], 0));
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * 2.2, 0, 6.2832); g.fill();
     }
-    for (i = 0; i < nc; i++) {                                         // clusters sit near the left / right edges
-      var n = 7 + ((Math.random() * 3) | 0), pts = [{ x: 0, y: 0, z: 0, r: 0.05 }], col = i % 2 ? PAL.yellow : PAL.purple;
-      for (j = 0; j < n; j++) {
-        var uu = (j + 0.5) / n, a = Math.acos(1 - 2 * uu), b = j * 2.399963;
-        pts.push({ x: Math.sin(a) * Math.cos(b), y: Math.cos(a), z: Math.sin(a) * Math.sin(b), r: rnd(0.024, 0.034) });
-      }
-      var edges = [];
-      for (j = 0; j < pts.length; j++) for (k = j + 1; k < pts.length; k++)
-        if (j === 0 || Math.hypot(pts[j].x - pts[k].x, pts[j].y - pts[k].y, pts[j].z - pts[k].z) < 1.0) edges.push([j, k]);
-      items.push({ kind: 1, u: i % 2 ? rnd(0.84, 0.95) : rnd(0.05, 0.16), v: (i + 0.5) / nc * 0.8 + rnd(0.05, 0.15), d: rnd(0.7, 0.95),
-        R: rnd(0.085, 0.12), pts: pts, edges: edges, ry: rnd(0, 6.28), rx: rnd(0, 6.28), wy: rnd(0.14, 0.26) * (i % 2 ? -1 : 1), wx: rnd(0.05, 0.12), pal: col, ph: rnd(0, 6.28), rate: rnd(0.004, 0.008), sw: rnd(0.4, 0.8) });
+    gr = g.createRadialGradient(x - r * 0.38, y - r * 0.42, r * 0.05, x, y, r);
+    gr.addColorStop(0, rgba(pal[0], alpha)); gr.addColorStop(0.25, rgba(pal[1], alpha));
+    gr.addColorStop(0.65, rgba(pal[2], alpha * 0.92)); gr.addColorStop(1, rgba(pal[3], alpha * 0.75));
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+    if (r > 6) {
+      g.strokeStyle = rgba(pal[1], 0.35 * alpha); g.lineWidth = Math.max(1, r * 0.06);
+      g.beginPath(); g.arc(x, y, r * 0.93, 0.15, 1.35); g.stroke();
+      g.fillStyle = "rgba(255,255,255," + 0.6 * alpha + ")";
+      g.beginPath(); g.ellipse(x - r * 0.36, y - r * 0.46, r * 0.2, r * 0.11, -0.7, 0, 6.2832); g.fill();
     }
-    for (i = 0; i < CONFIG.dust * (small ? 0.6 : 1); i++) dust.push({ u: Math.random(), v: Math.random(), d: rnd(0.3, 1), ph: rnd(0, 6.28), y: Math.random() > 0.7 });
-    items.sort(function (a, b) { return a.d - b.d; });                  // far to near
+  }
+
+  function sparkle(x, y, r, a) {   // soft four-point star with a glow
+    var gr = g.createRadialGradient(x, y, 0, x, y, r * 2.2);
+    gr.addColorStop(0, "rgba(255,205,70," + 0.35 * a + ")"); gr.addColorStop(1, "rgba(255,205,70,0)");
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * 2.2, 0, 6.2832); g.fill();
+    g.fillStyle = "rgba(" + (light ? "255,186,40" : "255,224,120") + "," + a + ")";
+    g.beginPath(); g.moveTo(x, y - r);
+    g.quadraticCurveTo(x, y, x + r, y); g.quadraticCurveTo(x, y, x, y + r);
+    g.quadraticCurveTo(x, y, x - r, y); g.quadraticCurveTo(x, y, x, y - r); g.fill();
+  }
+
+  function molecule(cx, cy, R, pal, al) {   // tiny ball-and-stick cluster
+    var n = 7, pts = [{ x: 0, y: 0, z: 0, r: 0.05 }], i, j, ry = rnd(0.3, 2.5), rx = rnd(0.3, 2.5);
+    for (i = 0; i < n; i++) { var u = (i + 0.5) / n, a = Math.acos(1 - 2 * u), b = i * 2.399963; pts.push({ x: Math.sin(a) * Math.cos(b), y: Math.cos(a), z: Math.sin(a) * Math.sin(b), r: rnd(0.026, 0.034) }); }
+    var cyy = Math.cos(ry), syy = Math.sin(ry), cxx = Math.cos(rx), sxx = Math.sin(rx);
+    var out = pts.map(function (q) {
+      var x1 = q.x * cyy + q.z * syy, z1 = -q.x * syy + q.z * cyy, y1 = q.y * cxx - z1 * sxx, z2 = q.y * sxx + z1 * cxx, f = 1 / (1 - 0.3 * z2);
+      return { x: cx + x1 * R * f, y: cy + y1 * R * f, z: z2, r: q.r * unit * f * 1.05 };
+    });
+    g.lineCap = "round"; g.lineWidth = Math.max(0.8, unit * 0.0016); g.strokeStyle = rgba(pal[light ? 2 : 1], 0.5 * al);
+    for (i = 0; i < out.length; i++) for (j = i + 1; j < out.length; j++)
+      if (i === 0 || Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y, pts[i].z - pts[j].z) < 1.0) { g.beginPath(); g.moveTo(out[i].x, out[i].y); g.lineTo(out[j].x, out[j].y); g.stroke(); }
+    out.map(function (q, n) { return n; }).sort(function (a, b) { return out[a].z - out[b].z; }).forEach(function (n) { ball(out[n].x, out[n].y, out[n].r, pal, al, true); });
+  }
+
+  function draw() {
+    light = document.documentElement.getAttribute("data-theme") !== "dark"; cv.className = light ? "lt" : "";
+    var cols = small ? 3 : CONFIG.cols, rows = small ? 5 : CONFIG.rows, nc = small ? 2 : CONFIG.clusters, i, r, c, list = [];
+    rs = CONFIG.seed; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    for (i = 0; i < CONFIG.dust * (small ? 0.6 : 1); i++) {   // tiny dots
+      g.fillStyle = rand() > 0.7 ? "rgba(255,190,60,0.45)" : (light ? "rgba(124,77,255,0.3)" : "rgba(196,170,255,0.45)");
+      g.beginPath(); g.arc(rand() * W, rand() * H, rnd(0.7, 1.6), 0, 6.2832); g.fill();
+    }
+    for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {   // one bubble per grid cell: even coverage
+      var d = rnd(0.45, 1);
+      list.push({ x: (c + rnd(0.18, 0.82)) / cols * W, y: (r + rnd(0.18, 0.82)) / rows * H, r: rnd(0.03, 0.062) * unit * (0.6 + 0.4 * d), pal: pick(), a: rnd(0.55, 0.8) * (0.55 + 0.45 * d), d: d });
+    }
+    list.sort(function (a, b) { return a.d - b.d; }).forEach(function (o) { ball(o.x, o.y, o.r, o.pal, o.a, true); });
+    for (i = 0; i < nc; i++) molecule(i % 2 ? W * rnd(0.87, 0.94) : W * rnd(0.06, 0.13), H * ((i + 0.5) / nc * 0.8 + rnd(0.05, 0.15)), unit * rnd(0.09, 0.115), i % 2 ? PAL.yellow : PAL.purple, 0.9);
+    for (i = 0; i < CONFIG.sparkles * (small ? 0.6 : 1); i++) sparkle(rand() * W, rand() * H, unit * rnd(0.011, 0.026), rnd(0.55, 0.95));
   }
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 700 ? 1.5 : 2);
     var rc = cv.getBoundingClientRect(); W = rc.width || window.innerWidth; H = rc.height || window.innerHeight;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    unit = Math.min(W, H) * 0.55 + Math.max(W, H) * 0.25;
-    var s = window.innerWidth < 700; if (s !== small || !items.length) { small = s; build(); }
-    if (calm) draw(2.4);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    unit = Math.min(W, H) * 0.55 + Math.max(W, H) * 0.25; small = window.innerWidth < 700;
+    draw();
   }
-
-  function ball(x, y, r, pal, alpha, halo) {
-    if (r < 0.6) return;
-    var gr, am = light ? 0.9 : 1;
-    if (halo) {
-      gr = g.createRadialGradient(x, y, r * 0.8, x, y, r * 2.4);
-      gr.addColorStop(0, rgba(pal[1], (light ? 0.14 : 0.2) * alpha)); gr.addColorStop(1, rgba(pal[1], 0));
-      g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * 2.4, 0, 6.2832); g.fill();
-    }
-    gr = g.createRadialGradient(x - r * 0.38, y - r * 0.42, r * 0.05, x, y, r);
-    gr.addColorStop(0, rgba(pal[0], alpha * am)); gr.addColorStop(0.22, rgba(pal[1], alpha * am));
-    gr.addColorStop(0.62, rgba(pal[2], alpha * 0.92 * am)); gr.addColorStop(1, rgba(pal[3], alpha * 0.8 * am));
-    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
-    if (r > 6) {
-      g.strokeStyle = rgba(pal[1], 0.35 * alpha); g.lineWidth = Math.max(1, r * 0.06);
-      g.beginPath(); g.arc(x, y, r * 0.93, 0.15, 1.35); g.stroke();
-      g.fillStyle = "rgba(255,255,255," + 0.55 * alpha + ")";
-      g.beginPath(); g.ellipse(x - r * 0.36, y - r * 0.46, r * 0.2, r * 0.11, -0.7, 0, 6.2832); g.fill();
-    }
-  }
-
-  // screen position of an item: grid position, slow upward drift, sway, parallax (nearer moves more)
-  function where(o, t) {
-    var k = CONFIG.parallax, vv = (((o.v - t * o.rate * CONFIG.speed - sy * 0.00006 * o.d) % 1.2) + 1.2) % 1.2 - 0.1;
-    return { x: o.u * W + Math.sin(t * o.sw * 0.6 + o.ph) * 14 * o.d - px * 46 * o.d * k, y: vv * H + Math.cos(t * 0.35 + o.ph) * 8 * o.d - py * 34 * o.d * k };
-  }
-
-  function drawSphere(o, t) {
-    var p = where(o, t), r = o.r * unit * (0.55 + 0.45 * o.d), al = o.a * (0.5 + 0.5 * o.d);
-    if (p.y < -r * 2.5 || p.y > H + r * 2.5) return;
-    ball(p.x, p.y, r, o.pal, al, true);
-  }
-
-  function drawCluster(o, t) {
-    var p = where(o, t), R = o.R * unit, cy = Math.cos(o.ry + t * o.wy), sy_ = Math.sin(o.ry + t * o.wy), cx = Math.cos(o.rx + t * o.wx), sx = Math.sin(o.rx + t * o.wx);
-    var al = 0.5 + 0.5 * o.d, i;
-    var out = o.pts.map(function (q) {
-      var x = q.x, y = q.y, z = q.z, x1 = x * cy + z * sy_, z1 = -x * sy_ + z * cy, y1 = y * cx - z1 * sx, z2 = y * sx + z1 * cx, f = 1 / (1 - 0.3 * z2);
-      return { x: p.x + x1 * R * f, y: p.y + y1 * R * f, z: z2, r: q.r * unit * f * 1.05 };
-    });
-    g.lineCap = "round";
-    o.edges.forEach(function (e) {
-      var a = out[e[0]], b = out[e[1]];
-      g.strokeStyle = rgba(o.pal[light ? 2 : 1], (light ? 0.5 : 0.45) * al); g.lineWidth = Math.max(0.7, unit * 0.0016);
-      g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
-    });
-    var order = out.map(function (q, n) { return n; }).sort(function (a, b) { return out[a].z - out[b].z; });
-    for (i = 0; i < order.length; i++) { var q = out[order[i]]; ball(q.x, q.y, q.r, o.pal, al, true); }
-  }
-
-  function drawDust(t) {
-    for (var i = 0; i < dust.length; i++) {
-      var d = dust[i], a = 0.15 + 0.3 * Math.abs(Math.sin(t * 0.6 + d.ph));
-      g.fillStyle = d.y ? "rgba(255,190,60," + a + ")" : (light ? "rgba(124,77,255," + a * 0.8 + ")" : "rgba(196,170,255," + a + ")");
-      g.beginPath(); g.arc(d.u * W - px * 18 * d.d, d.v * H - py * 14 * d.d, 0.6 + d.d * 0.9, 0, 6.2832); g.fill();
-    }
-  }
-
-  function theme() {
-    var l = document.documentElement.getAttribute("data-theme") !== "dark";
-    if (l !== light || cv.className === "" && l) { light = l; cv.className = l ? "lt" : ""; }
-  }
-  function draw(t) {
-    theme(); g.clearRect(0, 0, W, H);
-    px += (mx - px) * 0.05; py += (my - py) * 0.05;
-    drawDust(t);
-    for (var i = 0; i < items.length; i++) (items[i].kind ? drawCluster : drawSphere)(items[i], t);
-  }
-  function frame(now) {
-    if (!running) return;
-    requestAnimationFrame(frame);
-    if (now - last < 28) return; last = now;
-    draw((now - t0) / 1000);
-  }
-  function start() { if (running || calm) return; running = true; last = 0; requestAnimationFrame(frame); }
 
   function init() {
     cv = document.createElement("canvas"); cv.id = "bg3d"; cv.setAttribute("aria-hidden", "true");
-    document.body.insertBefore(cv, document.body.firstChild); g = cv.getContext("2d"); t0 = performance.now();
-    small = window.innerWidth < 700; resize();
-    window.addEventListener("resize", resize);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", resize);
-    if (CONFIG.parallax) {
-      window.addEventListener("pointermove", function (e) { mx = e.clientX / W - 0.5; my = e.clientY / H - 0.5; }, { passive: true });
-      window.addEventListener("scroll", function () { sy = window.scrollY || 0; }, { passive: true });
-      window.addEventListener("deviceorientation", function (e) {
-        if (e.gamma == null) return; mx = Math.max(-0.5, Math.min(0.5, e.gamma / 60)); my = Math.max(-0.5, Math.min(0.5, (e.beta - 40) / 80));
-      }, { passive: true });
-    }
-    if (window.MutationObserver) new MutationObserver(function () { if (calm) draw(2.4); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    document.addEventListener("visibilitychange", function () { running = false; if (!document.hidden) start(); });
-    start();
+    document.body.insertBefore(cv, document.body.firstChild); g = cv.getContext("2d"); resize();
+    var again = function () { clearTimeout(rt); rt = setTimeout(resize, 120); };
+    window.addEventListener("resize", again);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", again);
+    if (window.MutationObserver) new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   }
   if (document.body) init(); else document.addEventListener("DOMContentLoaded", init);
 })();
