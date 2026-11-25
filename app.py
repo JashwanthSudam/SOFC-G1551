@@ -1258,6 +1258,66 @@ def upload():
     return jsonify(model=which, n=len(rows), n_ok=len(ok), rows=rows, saved=saved)
 
 
+INV_KEYS = {"log_kstar": "log k*", "sigma_i": "ionic conductivity", "sigma_e": "electronic conductivity",
+            "tec": "thermal expansion", "rp": "polarization resistance", "asr": "ASR", "ehull": "E above hull"}
+
+
+@app.post("/api/inverse")
+def inverse():
+    """Wanted values (any of the predicted properties) -> the closest compositions from the candidate library."""
+    user, deny = need_user()
+    if deny:
+        return deny
+    if not _state.get("ks"):
+        return jsonify(error="Finding compositions needs the K* Star models (ks/ folder), which are not loaded."), 503
+    b = request.get_json(silent=True) or {}
+    try:
+        t = float(b.get("temp_c"))
+        if not ks_engine.T_MIN <= t <= ks_engine.T_MAX:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify(error=f"Enter a temperature between {ks_engine.T_MIN:.0f} and {ks_engine.T_MAX:.0f} \u00b0C."), 400
+    targets = {}
+    for k, name in INV_KEYS.items():
+        raw = (b.get("targets") or {}).get(k)
+        if raw in (None, ""):
+            continue
+        try:
+            v = float(raw)
+            if not math.isfinite(v) or (k in ks_engine.INV_LOG and v <= 0):
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify(error=f"Enter a valid number for {name}" + (" (it must be above 0)." if k in ks_engine.INV_LOG else ".")), 400
+        targets[k] = v
+    if not targets:
+        return jsonify(error="Enter at least one value you want, for example log k* or thermal expansion."), 400
+    try:
+        limit = max(1, min(25, int(b.get("limit", 10))))
+    except (TypeError, ValueError):
+        limit = 10
+    first = ks_engine.inverse(t, targets, stable_only=bool(b.get("stable_only")))
+    rows = []
+    for formula, conf in zip(first["formulas"], first["conf"]):  # exact values, same chain as the Predict and Batch pages
+        try:
+            d = ks_engine.describe(formula)
+            r = {"formula": formula, "conf": conf}
+            r.update(_batch_props(formula, t, "ks", d))
+            r["log_kstar"] = float(ks_engine.predict_logk(d["r"], [round(t)])[0])
+            r["kstar"] = float(10.0 ** r["log_kstar"])
+            r["distance"] = ks_engine.inv_distance(r, targets)
+        except Exception as exc:
+            print("Inverse row skipped:", formula, exc)
+            continue
+        if math.isfinite(r["distance"]):
+            rows.append(r)
+    rows.sort(key=lambda x: x["distance"])
+    rows = rows[:limit]
+    for r in rows:
+        r["match"] = "Very close" if r["distance"] <= 0.1 else "Close" if r["distance"] <= 0.3 else "Rough"
+    return jsonify(temp_c=first["temp_c"], targets=targets, rows=rows, searched=first["searched"], library=first["library"],
+                   library_size=first["library_size"], stable_limit=EHULL_STABLE_MAX)
+
+
 def _admin():
     u = auth.user_from_header(request.headers.get("Authorization", ""))
     return bool(u and u["role"] == "dev")

@@ -369,6 +369,57 @@ def screen(temp_c, stable_only=False, min_delta=None, limit=25, max_md=2.2):
             "library": src, "library_size": int(len(lib))}
 
 
+# ---------------------------------------------------------------- inverse: target values -> compositions
+# How far apart two values may be before they count as "one unit" of mismatch (log properties: decades).
+INV_LOG = ("sigma_i", "sigma_e", "rp", "asr")
+INV_SCALE = {"log_kstar": 1.0, "sigma_i": 1.0, "sigma_e": 1.0, "rp": 1.0, "asr": 1.0, "tec": 2.0, "ehull": 30.0}
+
+
+def inv_distance(values, targets):
+    """Mismatch between predicted values and the wanted values: root-mean-square over the wanted properties."""
+    d = []
+    for k, want in targets.items():
+        got = values.get(k)
+        if got is None or not np.isfinite(got):
+            return float("inf")
+        if k in INV_LOG:
+            diff = np.log10(max(float(got), 1e-30)) - np.log10(want)
+        else:
+            diff = float(got) - want
+        d.append(diff / INV_SCALE[k])
+    return float(np.sqrt(np.mean(np.square(d))))
+
+
+def inverse(temp_c, targets, stable_only=False, shortlist=40, max_md=2.2):
+    """Rank the candidate library by how close each composition's predicted values are to `targets`.
+    Fast first pass over the whole library (vectorised); the caller re-scores the shortlist with the exact per-material chain."""
+    lib, src = library()
+    key = round(float(temp_c))
+    ck = ("logk", key)
+    if ck not in _S:
+        X = lib[BASE].copy()
+        X["1000/T"] = _tk(key)
+        _S[ck] = _S["model"].predict(X[FEATURES])
+    logk = _S[ck]
+    pr = P.properties(logk, key, lib["Gap"].values, lib["Oxide_vacancy"].values, _lsc_vac())
+    cols = {"log_kstar": logk, "sigma_i": pr["sigma_i"], "sigma_e": pr["sigma_e"], "rp": pr["rp"], "asr": pr["asr"],
+            "tec": lib["TEC"].values, "ehull": lib["E_above_hull"].values}
+    sq = np.zeros(len(lib))
+    for k, want in targets.items():
+        v = np.asarray(cols[k], float)
+        diff = (np.log10(np.clip(v, 1e-30, None)) - np.log10(want)) if k in INV_LOG else (v - want)
+        sq += (diff / INV_SCALE[k]) ** 2
+    dist = np.sqrt(sq / len(targets))
+    keep = lib["md_ratio"].values <= max_md
+    if stable_only:
+        keep &= lib["E_above_hull"].values <= STABLE_EHULL
+    idx = np.flatnonzero(keep)
+    idx = idx[np.argsort(dist[idx])][:shortlist]
+    return {"temp_c": key, "indices": [int(i) for i in idx], "formulas": [str(lib.iloc[i]["Material composition"]) for i in idx],
+            "conf": ["High" if lib.iloc[i]["md_ratio"] <= 1.15 else "Medium" for i in idx],
+            "searched": int(keep.sum()), "library": src, "library_size": int(len(lib))}
+
+
 def training_rows():
     """The measured training rows in real units (reference rows for SHAP)."""
     return _S["df"][FEATURES]
