@@ -30,7 +30,13 @@
   <form id="iform" novalidate>
     <div class="fields"><div class="field"><label for="itemp">Temperature (&deg;C)</label><input id="itemp" type="number" step="any" value="800" min="300" max="1000"></div>
       <div class="field"><label for="ilimit">How many results</label><select id="ilimit"><option>5</option><option selected>10</option><option>20</option></select></div></div>
-    <h2 style="font-size:16px;margin:14px 0 8px">Values you want</h2>
+    <h2 style="font-size:16px;margin:14px 0 8px">Values you want <span class="pill" id="icount" style="margin-left:8px">0 of 7 entered</span></h2>
+    <div class="actions" style="margin:0 0 10px;flex-wrap:wrap"><button class="btn ghost" id="ilast" type="button">Use my last prediction (all 7)</button>
+      <button class="btn ghost" id="ipastebtn" type="button">Paste complete set</button>
+      <button class="btn ghost" id="iall" type="button">Complete example</button></div>
+    <div id="ipastebox" hidden style="margin-bottom:12px"><label for="ipaste" class="want" style="margin-bottom:4px">Paste all values, one per line or separated by commas. Labels are optional: with no labels, give 7 numbers in this order: log k*, ionic, electronic, thermal expansion, Rp, ASR, E above hull. Forms like 3.45e-4, 3.45 x 10^-4 and 3.45 &times; 10<sup>-4</sup> all work.</label>
+      <textarea id="ipaste" rows="7" style="width:100%;font-family:var(--mono);font-size:13px" placeholder="log k*  -6.820&#10;Ionic conductivity  3.45e-4&#10;Electronic conductivity  7.12e1&#10;Thermal expansion  16.29&#10;Polarization resistance  1.48&#10;ASR  1.39e1&#10;E above hull  61.2"></textarea>
+      <div class="actions" style="margin-top:8px"><button class="btn primary" id="iapply" type="button">Fill the boxes</button></div></div>
     <div class="grid7" id="ifields"></div>
     <label class="chk" style="margin-top:12px"><input type="checkbox" id="istable"> Only stable materials (E above hull at or below <span id="ilim">57</span> meV/atom)</label>
     <div class="actions" style="margin-top:12px"><button class="btn primary" id="igo" type="submit">Find compositions</button>
@@ -65,8 +71,44 @@
   ];
   $("#ifields").innerHTML = COLS.map(c => `<div class="field"><label for="t_${c[0]}">${c[1]} <small>(${c[2]})</small></label><input id="t_${c[0]}" data-k="${c[0]}" type="number" step="any" placeholder="e.g. ${c[3]}"></div>`).join("");
   const val = k => $("#t_" + k).value.trim();
-  $("#iex").addEventListener("click", () => { $("#itemp").value = 800; $("#t_log_kstar").value = -5.6; $("#t_tec").value = 16.3; $("#t_sigma_e").value = 30; });
-  $("#iclr").addEventListener("click", () => { COLS.forEach(c => { $("#t_" + c[0]).value = ""; }); $("#ires").hidden = true; });
+  const SUP = { "\u207b": "-", "\u2070": "0", "\u00b9": "1", "\u00b2": "2", "\u00b3": "3", "\u2074": "4", "\u2075": "5", "\u2076": "6", "\u2077": "7", "\u2078": "8", "\u2079": "9" };
+  const count = () => { const n = COLS.filter(c => val(c[0]) !== "").length; $("#icount").textContent = n + " of 7 entered" + (n === 7 ? " (complete)" : ""); };
+  $("#ifields").addEventListener("input", count);
+  const setAll = (o, t) => { COLS.forEach(c => { $("#t_" + c[0]).value = has(o[c[0]]) ? +(+o[c[0]]).toPrecision(4) : ""; }); if (has(t)) $("#itemp").value = Math.round(t); count(); };
+  const KEYS = [["log_kstar", /log\s*k|k\*/], ["sigma_i", /ion/], ["sigma_e", /elec|air/], ["tec", /therm|tec|expan/], ["rp", /polar|\brp\b/], ["asr", /\basr\b|area/], ["ehull", /hull/]];
+  function num(t) {
+    t = t.replace(/[\u2212\u2013]/g, "-").replace(/[\u207b\u2070\u00b9\u00b2\u00b3\u2074-\u2079]/g, c => SUP[c]);
+    t = t.replace(/\s*(?:x|\u00d7|\*)\s*10\s*\^?\s*(-?\d+)/gi, "e$1");
+    const m = t.match(/-?\d+(?:\.\d+)?(?:e[-+]?\d+)?/i); return m ? parseFloat(m[0]) : NaN;
+  }
+  function parsePaste(text) {
+    const out = {}, parts = text.split(/\n|;/).map(x => x.trim()).filter(Boolean);
+    let items = parts.length >= 2 ? parts : text.split(/,(?![^()]*\))/).map(x => x.trim()).filter(Boolean);
+    const labelled = items.some(x => /[a-z]{2,}/i.test(x.replace(/e[-+]?\d+|x\s*10|cm|s\^?|log/gi, "")));
+    if (labelled) {
+      items.forEach(line => { const low = line.toLowerCase(); const hit = KEYS.find(k => k[1].test(low) && !(k[0] in out)); if (!hit) return;
+        const body = line.replace(/^[a-z*\s().\u00b7]*?(?=[-\u2212]?\d)/i, ""); const v = num(body); if (isFinite(v)) out[hit[0]] = v; });
+    } else {
+      const nums = items.map(num).filter(isFinite); COLS.forEach((c, i) => { if (i < nums.length) out[c[0]] = nums[i]; });
+    }
+    return out;
+  }
+  $("#ipastebtn").addEventListener("click", () => { const b = $("#ipastebox"); b.hidden = !b.hidden; });
+  $("#iapply").addEventListener("click", () => {
+    const o = parsePaste($("#ipaste").value), n = Object.keys(o).length;
+    if (!n) { toast("Could not read any values. Check the format.", "error"); return; }
+    setAll(o); toast(n === 7 ? "All 7 values filled." : "Filled " + n + " of 7 values. Complete the rest, or search with these.", n === 7 ? "ok" : "info");
+  });
+  $("#ilast").addEventListener("click", () => {
+    let st = null; try { st = JSON.parse(sessionStorage.getItem("kstar-last")); } catch {}
+    const a = st && st.data && st.data.analysis, at = a && a.at;
+    if (!at) { toast("No recent prediction found. Run Predict first, or paste the values.", "error"); return; }
+    setAll({ log_kstar: at.logk != null ? at.logk : st.data.log_kstar, sigma_i: at.sigma_i, sigma_e: at.sigma_e, tec: at.tec, rp: at.rp, asr: at.asr, ehull: a.ehull }, a.temp_c);
+    toast("Filled from your last prediction" + (st.formula ? " (" + st.formula + ")" : "") + ".", "ok");
+  });
+  $("#iall").addEventListener("click", () => { setAll({ log_kstar: -5.6, sigma_i: 0.01, sigma_e: 30, tec: 16.3, rp: 0.1, asr: 1, ehull: 50 }, 800); });
+  $("#iex").addEventListener("click", () => { $("#itemp").value = 800; $("#t_log_kstar").value = -5.6; $("#t_tec").value = 16.3; $("#t_sigma_e").value = 30; count(); });
+  $("#iclr").addEventListener("click", () => { COLS.forEach(c => { $("#t_" + c[0]).value = ""; }); $("#ipaste").value = ""; count(); $("#ires").hidden = true; });
   let last = null;
   function draw() {
     const d = last, want = d.targets;
