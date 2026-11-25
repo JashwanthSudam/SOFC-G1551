@@ -267,8 +267,8 @@ def bundle(d, temps):
             "tec": float(d["e"]["TEC"])}
 
 
-def asr(rp, sigma_e):
-    return [float(x) for x in np.atleast_1d(P.asr_from(rp, sigma_e))]
+def asr(rp, sigma_e, sigma_i=None):
+    return [float(x) for x in np.atleast_1d(P.asr_from(rp, sigma_e, sigma_i))]
 
 
 def background(n=200):
