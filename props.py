@@ -13,6 +13,9 @@ F = 96485.33212       # C / mol
 C_O = float(os.environ.get("C_O_MOL_CM3", "0.083"))        # lattice oxygen concentration, mol/cm3 (ABO3)
 CHAR_LEN = float(os.environ.get("CHAR_LENGTH_CM", "0.01"))  # Lc = D*/k*, cm (about 100 um for mixed conductors)
 FILM_CM = float(os.environ.get("CATHODE_FILM_CM", "0.001")) # 10 um cathode layer, for the ohmic part of ASR
+# Extra series ohmic resistance (electrolyte + contacts), ohm cm2. Without this, ASR ~ Rp because a 10 um film adds <1e-3 ohm cm2.
+R_OHM_EXTRA = float(os.environ.get("ASR_R_OHM_EXTRA", "0.0"))
+SIGMA_E_FALLBACK = float(os.environ.get("SIGMA_E_FALLBACK_S_CM", "10"))  # used only if no conductivity is available
 LSC_FORMULA = os.environ.get("LSC_FORMULA", "La0.6Sr0.4CoO3")
 LOW_T_MAX = 700  # deg C; "low-temperature operation" at or below this
 
@@ -45,9 +48,16 @@ def r_polarization(log_k, temp_c):
     return R * tk(temp_c) / (4 * F * F * C_O * (10.0 ** log_k))
 
 
+def ohmic_parts(sigma_e):
+    """(film ohmic, extra series ohmic) in ohm cm2. Never silently zero: falls back to SIGMA_E_FALLBACK."""
+    se = sigma_e if sigma_e and sigma_e > 0 else SIGMA_E_FALLBACK
+    return FILM_CM / se, R_OHM_EXTRA
+
+
 def asr_total(rp, sigma_e):
-    """ASR = Rp + ohmic loss of a 10 um cathode layer (only if the conductivity is known)."""
-    return rp + (FILM_CM / sigma_e if sigma_e and sigma_e > 0 else 0.0)
+    """ASR = Rp + film ohmic loss + extra series ohmic (R_OHM_EXTRA)."""
+    film, extra = ohmic_parts(sigma_e)
+    return rp + film + extra
 
 
 def price_per_kg(frac_A, frac_B):
