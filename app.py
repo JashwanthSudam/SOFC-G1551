@@ -857,6 +857,35 @@ def predict():
     out = respond(df, which, _state["svr"], _state["rf"])
     out["properties"] = other_properties(descriptors=body.get("values"), model=which)
     inv = float(df.iloc[0]["1000/T"]) if "1000/T" in df.columns else None
+        # --- ionic conductivity + E above hull for descriptor mode ---
+    if out["properties"] is None:
+        out["properties"] = {}
+    temp_c = (1000 / inv - 273.15) if inv else None
+    try:
+        if temp_c is not None:
+            si = props.sigma_ionic(out["log_kstar"], temp_c)          # S/cm (Nernst-Einstein)
+            out["properties"]["ionic_conductivity"] = {"value": math.log10(si), "mode": "log k* (Nernst-Einstein)"}
+        else:
+            out["properties"]["ionic_conductivity"] = {"value": None, "error": "1000/T is needed."}
+    except Exception as exc:
+        out["properties"]["ionic_conductivity"] = {"value": None, "error": str(exc)}
+    try:
+        if "E_above_hull" in df.columns:                               # developer typed it in
+            eh = float(df.iloc[0]["E_above_hull"])
+            out["properties"]["ehull"] = {"value": eh, "limit": EHULL_STABLE_MAX, "stable": bool(eh <= EHULL_STABLE_MAX),
+                                          "mode": "the E_above_hull input"}
+        else:
+            m = _stability_model()
+            cols = m[2] if m else []
+            if m and all(c in df.columns for c in cols):
+                eh = float(m[0].predict(df[cols])[0])
+                out["properties"]["ehull"] = {"value": eh, "limit": EHULL_STABLE_MAX, "stable": bool(eh <= EHULL_STABLE_MAX),
+                                              "mode": "the stability model"}
+            else:
+                out["properties"]["ehull"] = {"value": None, "error": "Stability model unavailable."}
+    except Exception as exc:
+        out["properties"]["ehull"] = {"value": None, "error": str(exc)}
+  
     out["saved"] = _save(user, "descriptors", "Custom descriptors", (1000 / inv - 273.15) if inv else None,
                          which, out["log_kstar"], out["kstar"], body.get("values"))
     return jsonify(out)
