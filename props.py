@@ -48,15 +48,17 @@ def r_polarization(log_k, temp_c):
     return R * tk(temp_c) / (4 * F * F * C_O * (10.0 ** log_k))
 
 
-def ohmic_parts(sigma_e):
-    """(film ohmic, extra series ohmic) in ohm cm2. Never silently zero: falls back to SIGMA_E_FALLBACK."""
+def ohmic_parts(sigma_e, sigma_i=None):
+    """Bulk resistance of the film, ohm cm2: L/sigma_e + L/sigma_i (ionic path is usually the larger one)."""
     se = sigma_e if sigma_e and sigma_e > 0 else SIGMA_E_FALLBACK
-    return FILM_CM / se, R_OHM_EXTRA
+    film_e = FILM_CM / se
+    film_i = FILM_CM / sigma_i if sigma_i and sigma_i > 0 else 0.0
+    return film_e + film_i, R_OHM_EXTRA
 
 
-def asr_total(rp, sigma_e):
-    """ASR = Rp + film ohmic loss + extra series ohmic (R_OHM_EXTRA)."""
-    film, extra = ohmic_parts(sigma_e)
+def asr_total(rp, sigma_e, sigma_i=None):
+    """ASR = Rp (surface exchange) + film bulk resistance L(1/sigma_i + 1/sigma_e) + extra series ohmic."""
+    film, extra = ohmic_parts(sigma_e, sigma_i)
     return rp + film + extra
 
 
