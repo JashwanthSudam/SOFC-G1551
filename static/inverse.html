@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E1240">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Perov AI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="pwa.js" defer></script>
+<script src="bg3d.js" defer></script>
+<script src="dynamic.js" defer></script>
+<script src="tabs.js" defer></script>
+<script src="lattice.js" defer></script>
+<title>Find composition | Perov AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><style>.stack>*{min-width:0}#bres{min-width:0;max-width:100%}#bres .hb{grid-template-columns:minmax(110px,170px) 1fr 74px}#bres .hb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#bres .hb b{font-family:var(--mono);font-size:12px}table.t th small{font-weight:400;color:var(--muted)}.want{display:block;font-size:11px;color:var(--muted);font-weight:400}td.hit{font-weight:600}.grid7{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.chk{display:flex;gap:8px;align-items:center;font-size:14px}.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line,#8884)}</style><script src="theme.js"></script></head>
+<body data-mode="user">
+<header class="top"><div class="wrap">
+  <a class="brand" href="predict.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a>
+  <nav class="nav" aria-label="Pages"><a href="predict.html">Predict</a><a href="history.html">History</a><a href="batch.html">Batch</a><a href="inverse.html" aria-current="page">Find composition</a><a href="developer.html" class="dev-only">Developer</a><a href="research.html">Research</a></nav>
+  <div class="role"><span id="who"></span><b id="rolename"></b> <a href="#" id="signout">Sign out</a></div>
+</div></header>
+<main><div class="wrap">
+<div class="intro"><h1>Find a composition from values</h1>
+<p class="explorer-only">Enter the property values you want, fill in as many or as few as you like, and Perov AI lists the compositions whose predicted values are closest. Leave a box empty to ignore that property.</p>
+<p class="dev-only">POST /api/inverse with temp_c and targets. The whole candidate library is ranked with the vectorised models, then the shortlist is re-scored with the same per-material chain as /api/predict.</p></div>
+<section class="panel stack" style="max-width:980px">
+  <form id="iform" novalidate>
+    <div class="fields"><div class="field"><label for="itemp">Temperature (&deg;C)</label><input id="itemp" type="number" step="any" value="800" min="300" max="1000"></div>
+      <div class="field"><label for="ilimit">How many results</label><select id="ilimit"><option>5</option><option selected>10</option><option>20</option></select></div></div>
+    <h2 style="font-size:16px;margin:14px 0 8px">Values you want</h2>
+    <div class="grid7" id="ifields"></div>
+    <label class="chk" style="margin-top:12px"><input type="checkbox" id="istable"> Only stable materials (E above hull at or below <span id="ilim">57</span> meV/atom)</label>
+    <div class="actions" style="margin-top:12px"><button class="btn primary" id="igo" type="submit">Find compositions</button>
+      <button class="btn ghost" id="iex" type="button">Try an example</button><button class="btn ghost" id="iclr" type="button">Clear</button></div>
+  </form>
+  <div id="ires" hidden>
+    <h2 style="font-size:18px" id="ihead">Closest compositions</h2><p class="sub" id="isub"></p>
+    <div class="tablewrap" style="margin-top:8px"><table class="t" id="itab"></table></div>
+    <p class="sub" style="margin-top:10px">The search looks through the candidate library, so it returns known ABO<sub>3</sub> compositions, not brand-new ones. The values shown are Perov AI predictions, the same ones the Predict page gives. &ldquo;Match&rdquo; says how close the whole set of values is to what you entered, and the small grey number under a value is what you asked for. Press <b>Predict</b> on a row for the full report.</p></div>
+</section>
+</div></main>
+<script src="config.js"></script><script src="ui.js"></script>
+<script>
+(() => {
+  const ROLE = (() => { try { return localStorage.getItem("kstar-role"); } catch { return null; } })();
+  if (!(() => { try { return localStorage.getItem("kstar-token"); } catch { return null; } })()) { location.replace("index.html"); return; }
+  if (ROLE !== "dev" && ROLE !== "user") { location.replace("index.html"); return; }
+  document.body.dataset.mode = ROLE;
+  document.getElementById("rolename").textContent = ROLE === "dev" ? "Developer" : "Normal user";
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+  const has = v => v !== undefined && v !== null && isFinite(v);
+  // key, label, unit, placeholder, formatter
+  const COLS = [
+    ["log_kstar", "log k*", "log cm/s", "-5.6", v => v.toFixed(2)],
+    ["sigma_i", "Ionic conductivity", "S/cm", "0.01", v => v.toExponential(2)],
+    ["sigma_e", "Electronic conductivity (air)", "S/cm", "30", v => v.toExponential(2)],
+    ["tec", "Thermal expansion", "\u00d710\u207b\u2076 /K", "16.3", v => v.toFixed(2)],
+    ["rp", "Polarization resistance", "\u03a9\u00b7cm\u00b2", "0.1", v => v.toExponential(2)],
+    ["asr", "ASR", "\u03a9\u00b7cm\u00b2", "1", v => v.toExponential(2)],
+    ["ehull", "E above hull", "meV/atom", "50", v => v.toFixed(1)]
+  ];
+  $("#ifields").innerHTML = COLS.map(c => `<div class="field"><label for="t_${c[0]}">${c[1]} <small>(${c[2]})</small></label><input id="t_${c[0]}" data-k="${c[0]}" type="number" step="any" placeholder="e.g. ${c[3]}"></div>`).join("");
+  const val = k => $("#t_" + k).value.trim();
+  $("#iex").addEventListener("click", () => { $("#itemp").value = 800; $("#t_log_kstar").value = -5.6; $("#t_tec").value = 16.3; $("#t_sigma_e").value = 30; });
+  $("#iclr").addEventListener("click", () => { COLS.forEach(c => { $("#t_" + c[0]).value = ""; }); $("#ires").hidden = true; });
+  let last = null;
+  function draw() {
+    const d = last, want = d.targets;
+    $("#ihead").textContent = "Closest compositions at " + d.temp_c + " \u00b0C";
+    $("#isub").textContent = "Searched " + d.searched.toLocaleString() + " of " + d.library_size.toLocaleString() + " candidate compositions.";
+    if (!d.rows.length) { $("#itab").innerHTML = ""; $("#isub").textContent += " Nothing matched. Try fewer values or switch off the stable-only box."; return; }
+    $("#itab").innerHTML = "<tr><th>#</th><th>Formula</th><th>Match</th>" + COLS.map(c => `<th>${c[1]}<br><small>${c[2]}</small></th>`).join("") + "<th>Stable?</th><th>Confidence</th><th></th></tr>" +
+      d.rows.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.formula)}</b></td><td><span class="pill">${esc(x.match)}</span></td>` +
+        COLS.map(c => { const k = c[0], hit = k in want; return `<td class="${hit ? "hit" : ""}">${has(x[k]) ? c[4](x[k]) : ""}${hit ? `<span class="want">wanted ${c[4](want[k])}</span>` : ""}</td>`; }).join("") +
+        `<td>${x.stable === undefined ? "" : x.stable ? "Yes" : "No"}</td><td>${esc(x.conf)}</td><td><button type="button" class="btn ghost" data-go="${i}">Predict</button></td></tr>`).join("");
+  }
+  $("#itab").addEventListener("click", e => {
+    const b = e.target.closest("[data-go]"); if (!b || !last) return;
+    const x = last.rows[+b.dataset.go];
+    try { sessionStorage.setItem("kstar-prefill", JSON.stringify({ formula: x.formula, temp_c: last.temp_c })); sessionStorage.setItem("kstar-tab", "predict"); } catch {}
+    location.href = "predict.html";
+  });
+  $("#iform").addEventListener("submit", async e => {
+    e.preventDefault();
+    const targets = {}; COLS.forEach(c => { if (val(c[0]) !== "") targets[c[0]] = val(c[0]); });
+    if (!Object.keys(targets).length) { toast("Enter at least one value you want.", "error"); return; }
+    const btn = $("#igo"); btn.disabled = true; btn.textContent = "Searching\u2026";
+    try {
+      const r = await api("/api/inverse", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ temp_c: $("#itemp").value, targets, limit: +$("#ilimit").value, stable_only: $("#istable").checked }) });
+      const d = await r.json(); if (!r.ok) throw new Error(d.error || "Search failed.");
+      last = d; $("#ilim").textContent = d.stable_limit; draw(); $("#ires").hidden = false;
+      toast("Found " + d.rows.length + " composition" + (d.rows.length === 1 ? "" : "s") + ".", d.rows.length ? "ok" : "info");
+    } catch (ex) { toast(ex.message, "error"); }
+    finally { btn.disabled = false; btn.textContent = "Find compositions"; }
+  });
+})();
+</script></body></html>
