@@ -221,7 +221,7 @@ def add_search(user_id, kind, label, temp_c, model, log_kstar, kstar, detail=Non
 
 def list_searches(user_id, limit=200):
     with closing(conn()) as c, c:
-        rows = c.execute("SELECT id, created, kind, label, temp_c, model, log_kstar, kstar FROM searches "
+        rows = c.execute("SELECT id, created, kind, label, temp_c, model, log_kstar, kstar, detail FROM searches "
                          "WHERE user_id=? ORDER BY id DESC LIMIT ?", (user_id, limit)).fetchall()
     return [dict(r) for r in rows]
 
