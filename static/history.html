@@ -15,7 +15,7 @@
 <script src="lattice.js" defer></script>
 <title>History | Perov AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"><script src="theme.js"></script></head>
+<link rel="stylesheet" href="style.css"><style>tr.sub-row>td{background:rgba(127,127,127,.07);white-space:normal}tr.sub-row table.t{font-size:13px}td small{color:var(--muted)}</style><script src="theme.js"></script></head>
 <body data-mode="user">
 <header class="top"><div class="wrap">
   <a class="brand" href="predict.html"><svg viewBox="0 0 28 28" aria-hidden="true"><rect x="5" y="9" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2"/><rect x="9" y="5" width="14" height="14" rx="1" fill="none" stroke="#FFA21F" stroke-width="2" opacity=".55"/><circle cx="14" cy="14" r="2.6" fill="#C98512"/></svg><span>Perov <i>AI</i></span></a>
@@ -23,11 +23,11 @@
   <div class="role"><span id="who"></span><b id="rolename"></b> <a href="#" id="signout">Sign out</a></div>
 </div></header>
 <main><div class="wrap">
-<div class="intro"><h1>Your saved searches</h1><p>Every prediction you run while signed in is saved here, ready to run again.</p></div>
-<section class="panel" style="max-width:980px">
+<div class="intro"><h1>Your saved searches</h1><p>Every prediction, customised run and composition search you make while signed in is saved here with all its predicted values, ready to run again.</p></div>
+<section class="panel" style="max-width:1500px">
   <div class="actions" style="margin:0 0 14px"><button class="btn ghost" id="clr" type="button">Clear history</button></div>
   <div class="tablewrap"><table class="t" id="htab"></table></div>
-  <div id="hempty" class="empty" hidden><strong>No saved searches yet</strong>Run a prediction and it will appear here.</div>
+  <div id="hempty" class="empty" hidden><strong>No saved searches yet</strong>Run a prediction or a composition search and it will appear here.</div>
 </section>
 </div></main>
 <script src="config.js"></script><script src="ui.js"></script>
@@ -40,20 +40,82 @@
   document.getElementById("rolename").textContent = ROLE === "dev" ? "Developer" : "Normal user";
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
-  const KIND = { name: "By name", descriptors: "Descriptors", batch: "Batch file" };
+  const KIND = { name: "By name", descriptors: "Customised", batch: "Batch file", find: "Find material" };
+  const has = v => v !== undefined && v !== null && isFinite(v);
+  const sci = v => has(v) ? Number(v).toExponential(2) : "";
+  // key, heading, unit, formatter  (every value the Result page predicts)
+  const COLS = [
+    ["log_kstar", "log k*", "", v => v.toFixed(2)],
+    ["kstar", "k*", "cm/s", sci],
+    ["sigma_i", "Ionic conductivity", "S/cm", sci],
+    ["sigma_e", "Electronic conductivity", "S/cm", sci],
+    ["tec", "TEC", "\u00d710\u207b\u2076 /K", v => v.toFixed(2)],
+    ["rp", "Rp", "\u03a9\u00b7cm\u00b2", sci],
+    ["asr", "ASR", "\u03a9\u00b7cm\u00b2", sci],
+    ["ehull", "E above hull", "meV/atom", v => v.toFixed(1)],
+    ["price", "Price", "USD/kg", v => v.toFixed(1)]
+  ];
+  const NCOL = 5 + COLS.length + 2;
+  const open = new Set();
+  // the saved values of one row: the new detail.values, topped up with the two columns every row has
+  const valuesOf = x => ({ log_kstar: x.log_kstar, kstar: x.kstar, ...((x.detail && x.detail.values) || {}) });
+  const cells = v => COLS.map(c => `<td>${has(v[c[0]]) ? c[3](v[c[0]]) : ""}</td>`).join("") +
+    `<td>${v.stable === undefined || v.stable === null ? "" : v.stable ? "Yes" : "No"}</td>`;
+  const tempOf = x => x.temp_c == null ? "" : Math.round(x.temp_c);
+  const head = "<tr><th>When</th><th>Type</th><th>Material</th><th>T (\u00b0C)</th>" +
+    COLS.map(c => `<th>${c[1]}${c[2] ? `<br><small>${c[2]}</small>` : ""}</th>`).join("") + "<th>Stable?</th><th></th></tr>";
+
+  function matchesTable(x) {
+    const res = (x.detail && x.detail.results) || [];
+    if (!res.length) return `<tr class="sub-row"><td colspan="${NCOL}"><em>No matching compositions were found for this search.</em></td></tr>`;
+    const inp = (x.detail && x.detail.inputs) || {};
+    return `<tr class="sub-row"><td colspan="${NCOL}"><div class="tablewrap"><table class="t">
+      <tr><th>#</th><th>Formula</th><th>Match</th>${COLS.map(c => `<th>${c[1]}${c[2] ? `<br><small>${c[2]}</small>` : ""}</th>`).join("")}<th>Stable?</th><th></th></tr>` +
+      res.map((m, i) => `<tr><td>${i + 1}</td><td><b>${esc(m.formula)}</b></td><td>${esc(m.match || "")}</td>${cells(m)}
+        <td><button class="btn ghost" data-pred="${esc(m.formula)}" data-t="${x.temp_c}">Predict</button></td></tr>`).join("") +
+      `</table></div>${inp.stable_only ? '<p class="sub">Only stable materials were searched.</p>' : ""}</td></tr>`;
+  }
+
+  function rowHTML(x) {
+    const when = esc(x.time_ist || new Date(x.created).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "medium" }) + " IST");
+    let material = esc(x.label), actions = "";
+    if (x.kind === "find") {
+      const top = (x.detail && x.detail.results && x.detail.results[0]) || null, n = x.detail && x.detail.results ? x.detail.results.length : 0;
+      material = esc(x.label) + (top ? `<br><small>Closest: <b>${esc(top.formula)}</b> (${n} found)</small>` : "<br><small>Nothing matched</small>");
+      actions = `<button class="btn ghost" data-run="${x.id}">Run again</button> ` + (n ? `<button class="btn ghost" data-toggle="${x.id}">${open.has(x.id) ? "Hide" : "View"} matches</button> ` : "");
+    } else if (x.kind === "name" || (x.kind === "descriptors" && x.detail && x.detail.inputs && x.detail.inputs.values)) {
+      actions = `<button class="btn ghost" data-run="${x.id}">Run again</button> `;
+    } else if (x.kind === "batch" && x.rows_n != null) {
+      material = esc(x.label);
+    }
+    const sub = x.kind === "find" && open.has(x.id) ? matchesTable(x) : "";
+    return `<tr><td>${when}</td><td>${KIND[x.kind] || esc(x.kind)}</td><td>${material}</td><td>${tempOf(x)}</td>${cells(valuesOf(x))}` +
+      `<td>${actions}<button class="btn ghost" data-del="${x.id}">Delete</button></td></tr>` + sub;
+  }
+
+  function draw() {
+    const rows = window._rows || [];
+    $("#hempty").hidden = rows.length > 0; $("#htab").hidden = !rows.length; $("#clr").hidden = !rows.length;
+    $("#htab").innerHTML = head + rows.map(rowHTML).join("");
+  }
   async function load() {
     const r = await api("/api/history"), d = await r.json();
     if (!r.ok) { toast(d.error || "Could not load history.", "error"); return; }
-    const rows = d.searches; $("#hempty").hidden = rows.length > 0; $("#htab").hidden = !rows.length; $("#clr").hidden = !rows.length;
-    $("#htab").innerHTML = "<tr><th>When</th><th>Type</th><th>Material</th><th>T (\u00b0C)</th><th>log k*</th><th>k* (cm/s)</th><th></th></tr>" + rows.map(x => `<tr>
-      <td>${esc(x.time_ist || new Date(x.created).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "medium" }) + " IST")}</td><td>${KIND[x.kind] || esc(x.kind)}</td><td>${esc(x.label)}</td>
-      <td>${x.temp_c == null ? "" : Math.round(x.temp_c)}</td><td>${x.log_kstar == null ? "" : x.log_kstar.toFixed(2)}</td><td>${x.kstar == null ? "" : x.kstar.toExponential(2)}</td>
-      <td>${x.kind === "name" ? `<button class="btn ghost" data-run="${x.id}">Run again</button> ` : ""}<button class="btn ghost" data-del="${x.id}">Delete</button></td></tr>`).join("");
-    window._rows = rows;
+    window._rows = d.searches; draw();
   }
+  function stash(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} }
   $("#htab").addEventListener("click", async e => {
-    const run = e.target.dataset.run, del = e.target.dataset.del;
-    if (run) { const x = window._rows.find(r => r.id == run); try { sessionStorage.setItem("kstar-prefill", JSON.stringify({ formula: x.label, temp_c: Math.round(x.temp_c) })); } catch {} location.href = "predict.html"; }
+    const b = e.target.closest("button"); if (!b) return;
+    const run = b.dataset.run, del = b.dataset.del, tog = b.dataset.toggle;
+    if (b.dataset.pred) { stash("kstar-prefill", { formula: b.dataset.pred, temp_c: Math.round(+b.dataset.t) }); location.href = "predict.html"; return; }
+    if (tog) { const id = +tog; open.has(id) ? open.delete(id) : open.add(id); draw(); return; }
+    if (run) {
+      const x = window._rows.find(r => r.id == run), inp = (x.detail && x.detail.inputs) || {};
+      if (x.kind === "find") { stash("kstar-find-prefill", inp); location.href = "inverse.html"; }
+      else if (x.kind === "descriptors") { stash("kstar-desc-prefill", { model: inp.model || x.model, values: inp.values }); try { sessionStorage.setItem("kstar-input", "desc"); } catch {} location.href = "predict.html"; }
+      else { stash("kstar-prefill", { formula: inp.formula || x.label, temp_c: Math.round(x.temp_c) }); location.href = "predict.html"; }
+      return;
+    }
     if (del) { const r = await api("/api/history/" + del, { method: "DELETE" }); if (r.ok) { toast("Deleted.", "ok"); load(); } else toast("Could not delete.", "error"); }
   });
   $("#clr").onclick = async () => { if (!confirm("Delete all your saved searches?")) return; const r = await api("/api/history/clear", { method: "POST" }); if (r.ok) { toast("History cleared.", "ok"); load(); } };
