@@ -26,7 +26,7 @@
 <div class="intro"><h1>Developer panel</h1><p>System health, dataset analytics, model training and checkpoints.</p></div>
 <div class="stack">
 <section class="panel"><h2>System health</h2><div class="kpis" id="hkpi"></div><div id="hmodels" class="sub"></div></section>
-<section class="panel"><h2>Dataset</h2><div class="kpis" id="dkpi"></div><div class="grid2"><div><h3 style="font-size:15px">log k* distribution</h3><div id="d1"></div></div><div><h3 style="font-size:15px">Temperature (&deg;C)</h3><div id="d2"></div></div><div><h3 style="font-size:15px">A-site elements (materials)</h3><div id="d3"></div></div></div></section>
+<section class="panel"><h2>Dataset</h2><div class="kpis" id="dkpi"></div><div class="grid2"><div><h3 style="font-size:15px">log k* distribution</h3><div id="d1"></div></div><div><h3 style="font-size:15px">Temperature (&deg;C)</h3><div id="d2"></div></div><div><h3 style="font-size:15px">A-site main element (materials)</h3><div id="d3"></div></div></div></section>
 <section class="panel"><h2>Model scores</h2><p class="sub">R&sup2; on materials never seen in training. The test split holds out whole materials, so it is small and noisy; grouped cross-validation is steadier.</p><div class="tablewrap"><table class="t" id="mtab"></table></div></section>
 <section class="panel"><h2>Train a new checkpoint</h2><p class="sub">You are signed in as a developer. Trains all four models on the stored dataset, or on a file you upload, with a fixed seed. Nothing changes in the live app until you activate the checkpoint.</p>
 <form id="tform" novalidate><div class="fields"><div class="field"><label for="seed">Seed</label><input id="seed" type="number" value="42"></div>
@@ -58,7 +58,7 @@
       const hb = (h) => h.counts.map((_, i) => Math.round(h.edges[i]) + " to " + Math.round(h.edges[i + 1]));
       bars($("#d1"), ds.logk_hist.counts.map((_, i) => ds.logk_hist.edges[i].toFixed(1)), ds.logk_hist.counts);
       bars($("#d2"), hb(ds.temp_hist), ds.temp_hist.counts);
-      bars($("#d3"), Object.keys(ds.a_elements || {}), Object.values(ds.a_elements || {}));
+      const ae = ds.a_main_element || ds.a_elements || {}; bars($("#d3"), Object.keys(ae), Object.values(ae));
     }
     const m = d.metrics;
     if (m) $("#mtab").innerHTML = "<tr><th>Model</th><th>Test R\u00b2</th><th>Test MAE</th><th>Grouped CV R\u00b2</th></tr>" + Object.entries(m.models).map(([k, v]) => `<tr><td>${esc(k.replace("_", " "))}</td><td>${v.test.r2}</td><td>${v.test.mae}</td><td>${v.grouped_cv.r2}</td></tr>`).join("");
